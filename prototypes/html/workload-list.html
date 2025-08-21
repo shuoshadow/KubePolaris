@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作负载列表 - K8s管理平台</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">
+                <i class="fas fa-dharmachakra"></i>
+                <span>K8s管理平台</span>
+            </div>
+        </div>
+        
+        <div class="header-center">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="搜索Pod、Deployment、Service..." />
+                <span class="shortcut">⌘K</span>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <div class="notification">
+                <i class="fas fa-bell"></i>
+                <span class="badge">3</span>
+            </div>
+            <div class="user-menu">
+                <i class="fas fa-user-circle"></i>
+                <span>Admin</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="nav-menu">
+                <div class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>仪表盘</span>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-server"></i>
+                        <span>集群管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-desktop"></i>
+                        <span>节点管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item active">
+                        <i class="fas fa-rocket"></i>
+                        <span>工作负载</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="submenu">
+                        <div class="submenu-item current">
+                            <i class="fas fa-list"></i>
+                            <span>工作负载列表</span>
+                        </div>
+                        <div class="submenu-item">
+                            <i class="fas fa-plus"></i>
+                            <span>创建工作负载</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-cube"></i>
+                        <span>Pod管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-item">
+                    <i class="fas fa-search"></i>
+                    <span>全局搜索</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <i class="fas fa-home"></i>
+                <span>首页</span>
+                <i class="fas fa-chevron-right"></i>
+                <i class="fas fa-rocket"></i>
+                <span>工作负载</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>工作负载列表</span>
+            </div>
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>工作负载管理</h1>
+                    <p>管理和监控所有工作负载</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        创建工作负载
+                    </button>
+                    <button class="btn btn-default">
+                        <i class="fas fa-sync"></i>
+                        刷新
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search and Filter Bar -->
+            <div class="filter-bar">
+                <div class="search-input">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="搜索工作负载名称、标签..." />
+                </div>
+                <select class="filter-select">
+                    <option>选择命名空间</option>
+                    <option>default</option>
+                    <option>kube-system</option>
+                    <option>prod</option>
+                </select>
+                <button class="btn btn-default">
+                    <i class="fas fa-filter"></i>
+                    高级筛选
+                </button>
+            </div>
+
+            <!-- Workload Type Tabs -->
+            <div class="workload-tabs">
+                <div class="tab-nav">
+                    <button class="tab-btn active" data-type="deployment">
+                        <i class="fas fa-cube"></i>
+                        <span>Deployment</span>
+                        <span class="count">(12)</span>
+                    </button>
+                    <button class="tab-btn" data-type="statefulset">
+                        <i class="fas fa-database"></i>
+                        <span>StatefulSet</span>
+                        <span class="count">(3)</span>
+                    </button>
+                    <button class="tab-btn" data-type="daemonset">
+                        <i class="fas fa-cogs"></i>
+                        <span>DaemonSet</span>
+                        <span class="count">(8)</span>
+                    </button>
+                    <button class="tab-btn" data-type="job">
+                        <i class="fas fa-clock"></i>
+                        <span>Job</span>
+                        <span class="count">(5)</span>
+                    </button>
+                    <button class="tab-btn" data-type="cronjob">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>CronJob</span>
+                        <span class="count">(2)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Workload List -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h3>Deployment 列表</h3>
+                    <div class="table-actions">
+                        <button class="btn btn-sm btn-default">
+                            <i class="fas fa-download"></i>
+                            导出
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" /></th>
+                                <th>状态</th>
+                                <th>名称</th>
+                                <th>命名空间</th>
+                                <th>副本状态</th>
+                                <th>就绪副本</th>
+                                <th>镜像</th>
+                                <th>更新时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><input type="checkbox" /></td>
+                                <td>
+                                    <span class="status-badge success">
+                                        <i class="fas fa-check-circle"></i>
+                                        正常
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="workload-info">
+                                        <div class="workload-name">nginx-deployment</div>
+                                        <div class="workload-desc">Web服务器</div>
+                                    </div>
+                                </td>
+                                <td>default</td>
+                                <td>3/3</td>
+                                <td>3</td>
+                                <td>
+                                    <div class="image-info">
+                                        <span>nginx:1.20</span>
+                                    </div>
+                                </td>
+                                <td>2小时前</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="扩缩容">
+                                            <i class="fas fa-expand-arrows-alt"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <tr>
+                                <td><input type="checkbox" /></td>
+                                <td>
+                                    <span class="status-badge warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        警告
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="workload-info">
+                                        <div class="workload-name">api-server</div>
+                                        <div class="workload-desc">API服务</div>
+                                    </div>
+                                </td>
+                                <td>prod</td>
+                                <td>2/3</td>
+                                <td>2</td>
+                                <td>
+                                    <div class="image-info">
+                                        <span>api:v2.1</span>
+                                    </div>
+                                </td>
+                                <td>5分钟前</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="扩缩容">
+                                            <i class="fas fa-expand-arrows-alt"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <tr>
+                                <td><input type="checkbox" /></td>
+                                <td>
+                                    <span class="status-badge success">
+                                        <i class="fas fa-check-circle"></i>
+                                        正常
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="workload-info">
+                                        <div class="workload-name">web-frontend</div>
+                                        <div class="workload-desc">前端应用</div>
+                                    </div>
+                                </td>
+                                <td>prod</td>
+                                <td>5/5</td>
+                                <td>5</td>
+                                <td>
+                                    <div class="image-info">
+                                        <span>web:latest</span>
+                                    </div>
+                                </td>
+                                <td>1天前</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="扩缩容">
+                                            <i class="fas fa-expand-arrows-alt"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <tr>
+                                <td><input type="checkbox" /></td>
+                                <td>
+                                    <span class="status-badge error">
+                                        <i class="fas fa-times-circle"></i>
+                                        异常
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="workload-info">
+                                        <div class="workload-name">mysql-cluster</div>
+                                        <div class="workload-desc">数据库集群</div>
+                                    </div>
+                                </td>
+                                <td>prod</td>
+                                <td>0/1</td>
+                                <td>0</td>
+                                <td>
+                                    <div class="image-info">
+                                        <span>mysql:8.0</span>
+                                    </div>
+                                </td>
+                                <td>10分钟前</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="扩缩容">
+                                            <i class="fas fa-expand-arrows-alt"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="pagination">
+                    <div class="pagination-info">
+                        显示 1-10 / 共 12 条
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="btn btn-sm" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="btn btn-sm btn-primary">1</button>
+                        <button class="btn btn-sm">2</button>
+                        <button class="btn btn-sm">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Batch Operations Bar (hidden by default) -->
+            <div class="batch-operations" id="batchOperations" style="display: none;">
+                <div class="batch-info">
+                    已选中 <span id="selectedCount">0</span> 个工作负载
+                </div>
+                <div class="batch-actions">
+                    <button class="btn btn-default">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                        批量扩缩容
+                    </button>
+                    <button class="btn btn-default">
+                        <i class="fas fa-redo"></i>
+                        批量重启
+                    </button>
+                    <button class="btn btn-danger">
+                        <i class="fas fa-trash"></i>
+                        批量删除
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="prototype-nav">
+        <h3>原型页面导航</h3>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">集群列表</a>
+            <a href="cluster-detail.html" class="nav-link">集群详情</a>
+            <a href="node-list.html" class="nav-link">节点列表</a>
+            <a href="pod-list.html" class="nav-link">Pod列表</a>
+            <a href="workload-list.html" class="nav-link active">工作负载</a>
+            <a href="global-search.html" class="nav-link">全局搜索</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

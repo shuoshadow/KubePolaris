@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全局搜索 - K8s管理平台</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">
+                <i class="fas fa-dharmachakra"></i>
+                <span>K8s管理平台</span>
+            </div>
+        </div>
+        
+        <div class="header-center">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="搜索Pod、Deployment、Service..." />
+                <span class="shortcut">⌘K</span>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <div class="notification">
+                <i class="fas fa-bell"></i>
+                <span class="badge">3</span>
+            </div>
+            <div class="user-menu">
+                <i class="fas fa-user-circle"></i>
+                <span>Admin</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="nav-menu">
+                <div class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>仪表盘</span>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-server"></i>
+                        <span>集群管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-desktop"></i>
+                        <span>节点管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-rocket"></i>
+                        <span>工作负载</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-cube"></i>
+                        <span>Pod管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-item active">
+                    <i class="fas fa-search"></i>
+                    <span>全局搜索</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <i class="fas fa-home"></i>
+                <span>首页</span>
+                <i class="fas fa-chevron-right"></i>
+                <i class="fas fa-search"></i>
+                <span>全局搜索</span>
+            </div>
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>全局搜索</h1>
+                    <p>搜索K8s集群中的所有资源</p>
+                </div>
+            </div>
+
+            <!-- Search Input -->
+            <div class="search-section">
+                <div class="search-input-large">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="搜索K8s资源、配置、日志..." value="nginx" />
+                    <button class="search-btn">搜索</button>
+                </div>
+                
+                <div class="search-suggestions">
+                    <div class="suggestion-item">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>搜索建议: 使用 kind:pod 搜索所有Pod</span>
+                    </div>
+                    <div class="search-actions">
+                        <button class="btn btn-sm btn-default">
+                            <i class="fas fa-question-circle"></i>
+                            语法帮助
+                        </button>
+                        <button class="btn btn-sm btn-default">
+                            <i class="fas fa-history"></i>
+                            搜索历史
+                        </button>
+                        <button class="btn btn-sm btn-default">
+                            <i class="fas fa-save"></i>
+                            保存搜索
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Filters -->
+            <div class="search-filters">
+                <div class="filter-row">
+                    <select class="filter-select">
+                        <option>资源类型: 全部</option>
+                        <option>Pod</option>
+                        <option>Deployment</option>
+                        <option>Service</option>
+                        <option>ConfigMap</option>
+                    </select>
+                    <select class="filter-select">
+                        <option>命名空间: 全部</option>
+                        <option>default</option>
+                        <option>kube-system</option>
+                        <option>prod</option>
+                    </select>
+                    <select class="filter-select">
+                        <option>集群: prod-k8s</option>
+                        <option>test-k8s</option>
+                        <option>dev-k8s</option>
+                    </select>
+                    <select class="filter-select">
+                        <option>状态: 全部</option>
+                        <option>运行中</option>
+                        <option>失败</option>
+                        <option>待处理</option>
+                    </select>
+                </div>
+                
+                <div class="filter-row">
+                    <div class="quick-filters">
+                        <label class="checkbox-label">
+                            <input type="checkbox" />
+                            <span>只显示异常资源</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" />
+                            <span>只显示系统资源</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" />
+                            <span>最近创建</span>
+                        </label>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn btn-primary">应用筛选</button>
+                        <button class="btn btn-default">重置筛选</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Results Stats -->
+            <div class="search-stats">
+                <div class="stats-header">
+                    <div class="stats-info">
+                        关键词: "nginx" | 找到 <strong>125</strong> 个结果 | 耗时 0.23秒
+                    </div>
+                    <div class="stats-actions">
+                        <select class="sort-select">
+                            <option>排序: 相关性</option>
+                            <option>名称</option>
+                            <option>创建时间</option>
+                            <option>更新时间</option>
+                        </select>
+                        <button class="btn btn-sm btn-default">
+                            <i class="fas fa-download"></i>
+                            导出结果
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon pod">
+                            <i class="fas fa-cube"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number">45</div>
+                            <div class="stat-label">Pod</div>
+                            <div class="stat-percentage">36%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon deployment">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number">12</div>
+                            <div class="stat-label">Deployment</div>
+                            <div class="stat-percentage">9.6%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon service">
+                            <i class="fas fa-network-wired"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number">8</div>
+                            <div class="stat-label">Service</div>
+                            <div class="stat-percentage">6.4%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon configmap">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number">15</div>
+                            <div class="stat-label">ConfigMap</div>
+                            <div class="stat-percentage">12%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon secret">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number">10</div>
+                            <div class="stat-label">Secret</div>
+                            <div class="stat-percentage">8%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon other">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number">35</div>
+                            <div class="stat-label">其他</div>
+                            <div class="stat-percentage">28%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Results List -->
+            <div class="search-results">
+                <div class="result-item">
+                    <div class="result-icon pod">
+                        <i class="fas fa-cube"></i>
+                    </div>
+                    <div class="result-content">
+                        <div class="result-header">
+                            <h4>nginx-deploy-xxx-abc</h4>
+                            <span class="result-type">Pod</span>
+                            <span class="result-status success">Running</span>
+                        </div>
+                        <div class="result-meta">
+                            <span>default 命名空间</span>
+                            <span>worker-1 节点</span>
+                            <span>创建时间: 2024-08-01 10:30:00</span>
+                            <span>最后更新: 2小时前</span>
+                        </div>
+                        <div class="result-match">
+                            匹配: 名称包含"nginx" | 标签app=nginx
+                        </div>
+                    </div>
+                    <div class="result-actions">
+                        <button class="btn btn-sm btn-default">查看详情</button>
+                        <button class="btn btn-sm btn-default">快速操作</button>
+                    </div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-icon deployment">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <div class="result-content">
+                        <div class="result-header">
+                            <h4>nginx-deployment</h4>
+                            <span class="result-type">Deployment</span>
+                            <span class="result-status success">Ready</span>
+                        </div>
+                        <div class="result-meta">
+                            <span>default 命名空间</span>
+                            <span>3/3 副本就绪</span>
+                            <span>创建时间: 2024-07-15 14:20:00</span>
+                            <span>最后更新: 1天前</span>
+                        </div>
+                        <div class="result-match">
+                            匹配: 名称包含"nginx" | 镜像nginx:1.20-alpine
+                        </div>
+                    </div>
+                    <div class="result-actions">
+                        <button class="btn btn-sm btn-default">查看详情</button>
+                        <button class="btn btn-sm btn-default">快速操作</button>
+                    </div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-icon service">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <div class="result-content">
+                        <div class="result-header">
+                            <h4>nginx-service</h4>
+                            <span class="result-type">Service</span>
+                            <span class="result-status success">Active</span>
+                        </div>
+                        <div class="result-meta">
+                            <span>default 命名空间</span>
+                            <span>ClusterIP</span>
+                            <span>80:30080/TCP</span>
+                            <span>创建时间: 2024-07-15 14:25:00</span>
+                            <span>最后更新: 1天前</span>
+                        </div>
+                        <div class="result-match">
+                            匹配: 名称包含"nginx" | 选择器app=nginx
+                        </div>
+                    </div>
+                    <div class="result-actions">
+                        <button class="btn btn-sm btn-default">查看详情</button>
+                        <button class="btn btn-sm btn-default">快速操作</button>
+                    </div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-icon configmap">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <div class="result-content">
+                        <div class="result-header">
+                            <h4>nginx-config</h4>
+                            <span class="result-type">ConfigMap</span>
+                            <span class="result-status success">Active</span>
+                        </div>
+                        <div class="result-meta">
+                            <span>default 命名空间</span>
+                            <span>2个数据项</span>
+                            <span>创建时间: 2024-07-15 14:15:00</span>
+                            <span>最后更新: 3天前</span>
+                        </div>
+                        <div class="result-match">
+                            匹配: 名称包含"nginx" | 数据包含nginx配置
+                        </div>
+                    </div>
+                    <div class="result-actions">
+                        <button class="btn btn-sm btn-default">查看详情</button>
+                        <button class="btn btn-sm btn-default">快速操作</button>
+                    </div>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="pagination">
+                    <div class="pagination-info">
+                        显示 1-10 / 共 125 条
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="btn btn-sm" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="btn btn-sm btn-primary">1</button>
+                        <button class="btn btn-sm">2</button>
+                        <button class="btn btn-sm">3</button>
+                        <button class="btn btn-sm">4</button>
+                        <button class="btn btn-sm">5</button>
+                        <span>...</span>
+                        <button class="btn btn-sm">13</button>
+                        <button class="btn btn-sm">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="prototype-nav">
+        <h3>原型页面导航</h3>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">集群列表</a>
+            <a href="cluster-detail.html" class="nav-link">集群详情</a>
+            <a href="node-list.html" class="nav-link">节点列表</a>
+            <a href="pod-list.html" class="nav-link">Pod列表</a>
+            <a href="workload-list.html" class="nav-link">工作负载</a>
+            <a href="global-search.html" class="nav-link active">全局搜索</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

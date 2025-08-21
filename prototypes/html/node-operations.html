@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>节点操作 - K8s管理平台</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">
+                <i class="fas fa-dharmachakra"></i>
+                <span>K8s管理平台</span>
+            </div>
+        </div>
+        
+        <div class="header-center">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="搜索Pod、Deployment、Service..." />
+                <span class="shortcut">⌘K</span>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <div class="notification">
+                <i class="fas fa-bell"></i>
+                <span class="badge">3</span>
+            </div>
+            <div class="user-menu">
+                <i class="fas fa-user-circle"></i>
+                <span>Admin</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="nav-menu">
+                <div class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>仪表盘</span>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-server"></i>
+                        <span>集群管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item active">
+                        <i class="fas fa-desktop"></i>
+                        <span>节点管理</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="submenu">
+                        <div class="submenu-item">
+                            <i class="fas fa-list"></i>
+                            <span>节点列表</span>
+                        </div>
+                        <div class="submenu-item current">
+                            <i class="fas fa-cogs"></i>
+                            <span>节点操作</span>
+                        </div>
+                        <div class="submenu-item">
+                            <i class="fas fa-chart-line"></i>
+                            <span>节点监控</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-rocket"></i>
+                        <span>工作负载</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-cube"></i>
+                        <span>Pod管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-item">
+                    <i class="fas fa-search"></i>
+                    <span>全局搜索</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <i class="fas fa-home"></i>
+                <span>首页</span>
+                <i class="fas fa-chevron-right"></i>
+                <i class="fas fa-desktop"></i>
+                <span>节点管理</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>节点操作</span>
+            </div>
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>节点批量操作</h1>
+                    <p>对多个节点执行批量操作，如标签管理、污点设置、维护模式等</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-default">
+                        <i class="fas fa-refresh"></i>
+                        刷新
+                    </button>
+                    <button class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        添加节点
+                    </button>
+                </div>
+            </div>
+
+            <!-- Operation Toolbar -->
+            <div class="operation-toolbar">
+                <div class="toolbar-left">
+                    <div class="selection-info">
+                        <span class="selected-count">已选择 <strong>0</strong> 个节点</span>
+                        <button class="btn-link" id="selectAll">全选</button>
+                        <button class="btn-link" id="clearSelection">清空</button>
+                    </div>
+                </div>
+                <div class="toolbar-right">
+                    <div class="batch-operations">
+                        <button class="btn btn-secondary" disabled id="batchLabel">
+                            <i class="fas fa-tags"></i>
+                            批量标签
+                        </button>
+                        <button class="btn btn-secondary" disabled id="batchTaint">
+                            <i class="fas fa-ban"></i>
+                            批量污点
+                        </button>
+                        <button class="btn btn-warning" disabled id="batchCordon">
+                            <i class="fas fa-pause"></i>
+                            批量封锁
+                        </button>
+                        <button class="btn btn-success" disabled id="batchUncordon">
+                            <i class="fas fa-play"></i>
+                            批量解封
+                        </button>
+                        <button class="btn btn-danger" disabled id="batchDrain">
+                            <i class="fas fa-download"></i>
+                            批量驱逐
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-section">
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>状态筛选:</label>
+                        <select id="statusFilter">
+                            <option value="">全部状态</option>
+                            <option value="Ready">就绪</option>
+                            <option value="NotReady">未就绪</option>
+                            <option value="SchedulingDisabled">已封锁</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>角色筛选:</label>
+                        <select id="roleFilter">
+                            <option value="">全部角色</option>
+                            <option value="master">Master</option>
+                            <option value="worker">Worker</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>标签筛选:</label>
+                        <input type="text" id="labelFilter" placeholder="key=value" />
+                    </div>
+                    <div class="filter-group">
+                        <label>搜索:</label>
+                        <input type="text" id="searchFilter" placeholder="搜索节点名称..." />
+                    </div>
+                    <button class="btn btn-default" id="clearFilters">
+                        <i class="fas fa-times"></i>
+                        清空筛选
+                    </button>
+                </div>
+            </div>
+
+            <!-- Nodes Table -->
+            <div class="content-card">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th width="40">
+                                    <input type="checkbox" id="selectAllCheckbox" />
+                                </th>
+                                <th>节点名称</th>
+                                <th>状态</th>
+                                <th>角色</th>
+                                <th>版本</th>
+                                <th>CPU使用率</th>
+                                <th>内存使用率</th>
+                                <th>Pod数量</th>
+                                <th>创建时间</th>
+                                <th width="120">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="node-checkbox" data-node="master-1" />
+                                </td>
+                                <td>
+                                    <div class="node-info">
+                                        <i class="fas fa-server"></i>
+                                        <span class="node-name">master-1</span>
+                                        <div class="node-labels">
+                                            <span class="label">node-role.kubernetes.io/master</span>
+                                            <span class="label">zone=us-west-1a</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge ready">
+                                        <i class="fas fa-check-circle"></i>
+                                        Ready
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="role-badge master">Master</span>
+                                </td>
+                                <td>v1.28.2</td>
+                                <td>
+                                    <div class="usage-bar">
+                                        <div class="usage-fill" style="width: 45%"></div>
+                                        <span class="usage-text">45%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="usage-bar">
+                                        <div class="usage-fill" style="width: 62%"></div>
+                                        <span class="usage-text">62%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="pod-count">12/110</span>
+                                </td>
+                                <td>2024-01-15 10:30:00</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="编辑标签">
+                                            <i class="fas fa-tags"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多操作">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="node-checkbox" data-node="worker-1" />
+                                </td>
+                                <td>
+                                    <div class="node-info">
+                                        <i class="fas fa-server"></i>
+                                        <span class="node-name">worker-1</span>
+                                        <div class="node-labels">
+                                            <span class="label">node-role.kubernetes.io/worker</span>
+                                            <span class="label">zone=us-west-1a</span>
+                                            <span class="label">instance-type=m5.large</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge ready">
+                                        <i class="fas fa-check-circle"></i>
+                                        Ready
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="role-badge worker">Worker</span>
+                                </td>
+                                <td>v1.28.2</td>
+                                <td>
+                                    <div class="usage-bar">
+                                        <div class="usage-fill" style="width: 78%"></div>
+                                        <span class="usage-text">78%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="usage-bar">
+                                        <div class="usage-fill" style="width: 85%"></div>
+                                        <span class="usage-text">85%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="pod-count">95/110</span>
+                                </td>
+                                <td>2024-01-15 10:32:00</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="编辑标签">
+                                            <i class="fas fa-tags"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多操作">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="node-checkbox" data-node="worker-2" />
+                                </td>
+                                <td>
+                                    <div class="node-info">
+                                        <i class="fas fa-server"></i>
+                                        <span class="node-name">worker-2</span>
+                                        <div class="node-labels">
+                                            <span class="label">node-role.kubernetes.io/worker</span>
+                                            <span class="label">zone=us-west-1b</span>
+                                            <span class="label">instance-type=m5.large</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge not-ready">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        NotReady
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="role-badge worker">Worker</span>
+                                </td>
+                                <td>v1.28.2</td>
+                                <td>
+                                    <div class="usage-bar">
+                                        <div class="usage-fill" style="width: 0%"></div>
+                                        <span class="usage-text">N/A</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="usage-bar">
+                                        <div class="usage-fill" style="width: 0%"></div>
+                                        <span class="usage-text">N/A</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="pod-count">0/110</span>
+                                </td>
+                                <td>2024-01-15 10:34:00</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="编辑标签">
+                                            <i class="fas fa-tags"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多操作">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="node-checkbox" data-node="worker-3" />
+                                </td>
+                                <td>
+                                    <div class="node-info">
+                                        <i class="fas fa-server"></i>
+                                        <span class="node-name">worker-3</span>
+                                        <div class="node-labels">
+                                            <span class="label">node-role.kubernetes.io/worker</span>
+                                            <span class="label">zone=us-west-1c</span>
+                                            <span class="label">instance-type=m5.xlarge</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge cordoned">
+                                        <i class="fas fa-pause-circle"></i>
+                                        SchedulingDisabled
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="role-badge worker">Worker</span>
+                                </td>
+                                <td>v1.28.2</td>
+                                <td>
+                                    <div class="usage-bar">
+                                        <div class="usage-fill" style="width: 35%"></div>
+                                        <span class="usage-text">35%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="usage-bar">
+                                        <div class="usage-fill" style="width: 42%"></div>
+                                        <span class="usage-text">42%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="pod-count">45/110</span>
+                                </td>
+                                <td>2024-01-15 10:36:00</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="编辑标签">
+                                            <i class="fas fa-tags"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多操作">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Batch Operation Modals -->
+            <!-- Label Management Modal -->
+            <div class="modal" id="labelModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>批量标签管理</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="selected-nodes">
+                            <h4>选中的节点 (3个):</h4>
+                            <div class="node-list">
+                                <span class="node-tag">worker-1</span>
+                                <span class="node-tag">worker-2</span>
+                                <span class="node-tag">worker-3</span>
+                            </div>
+                        </div>
+                        
+                        <div class="operation-type">
+                            <h4>操作类型:</h4>
+                            <label class="radio-label">
+                                <input type="radio" name="labelOperation" value="add" checked />
+                                <span>添加标签</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="labelOperation" value="update" />
+                                <span>更新标签</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="labelOperation" value="remove" />
+                                <span>删除标签</span>
+                            </label>
+                        </div>
+                        
+                        <div class="label-form">
+                            <div class="form-group">
+                                <label>标签键:</label>
+                                <input type="text" id="labelKey" placeholder="例如: environment" />
+                            </div>
+                            <div class="form-group">
+                                <label>标签值:</label>
+                                <input type="text" id="labelValue" placeholder="例如: production" />
+                            </div>
+                        </div>
+                        
+                        <div class="existing-labels">
+                            <h4>现有标签:</h4>
+                            <div class="label-list">
+                                <div class="label-item">
+                                    <span class="label-key">zone</span>
+                                    <span class="label-separator">=</span>
+                                    <span class="label-value">us-west-1a</span>
+                                    <button class="label-remove">×</button>
+                                </div>
+                                <div class="label-item">
+                                    <span class="label-key">instance-type</span>
+                                    <span class="label-separator">=</span>
+                                    <span class="label-value">m5.large</span>
+                                    <button class="label-remove">×</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-default">取消</button>
+                        <button class="btn btn-primary">应用标签</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Taint Management Modal -->
+            <div class="modal" id="taintModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>批量污点管理</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="selected-nodes">
+                            <h4>选中的节点 (2个):</h4>
+                            <div class="node-list">
+                                <span class="node-tag">worker-1</span>
+                                <span class="node-tag">worker-2</span>
+                            </div>
+                        </div>
+                        
+                        <div class="operation-type">
+                            <h4>操作类型:</h4>
+                            <label class="radio-label">
+                                <input type="radio" name="taintOperation" value="add" checked />
+                                <span>添加污点</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="taintOperation" value="remove" />
+                                <span>删除污点</span>
+                            </label>
+                        </div>
+                        
+                        <div class="taint-form">
+                            <div class="form-group">
+                                <label>污点键:</label>
+                                <input type="text" id="taintKey" placeholder="例如: maintenance" />
+                            </div>
+                            <div class="form-group">
+                                <label>污点值:</label>
+                                <input type="text" id="taintValue" placeholder="例如: scheduled" />
+                            </div>
+                            <div class="form-group">
+                                <label>污点效果:</label>
+                                <select id="taintEffect">
+                                    <option value="NoSchedule">NoSchedule</option>
+                                    <option value="PreferNoSchedule">PreferNoSchedule</option>
+                                    <option value="NoExecute">NoExecute</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="existing-taints">
+                            <h4>现有污点:</h4>
+                            <div class="taint-list">
+                                <div class="taint-item">
+                                    <span class="taint-key">node.kubernetes.io/unschedulable</span>
+                                    <span class="taint-separator">:</span>
+                                    <span class="taint-effect">NoSchedule</span>
+                                    <button class="taint-remove">×</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-default">取消</button>
+                        <button class="btn btn-primary">应用污点</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drain Confirmation Modal -->
+            <div class="modal" id="drainModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>批量驱逐确认</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="warning-message">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>您即将驱逐以下节点上的所有Pod，这将导致Pod被重新调度到其他节点。请确认此操作。</p>
+                        </div>
+                        
+                        <div class="selected-nodes">
+                            <h4>选中的节点 (2个):</h4>
+                            <div class="node-list">
+                                <span class="node-tag">worker-1</span>
+                                <span class="node-tag">worker-2</span>
+                            </div>
+                        </div>
+                        
+                        <div class="drain-options">
+                            <h4>驱逐选项:</h4>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="ignoreDaemonSets" checked />
+                                <span>忽略DaemonSet</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="deleteLocalData" />
+                                <span>删除本地数据</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="force" />
+                                <span>强制驱逐</span>
+                            </label>
+                            <div class="form-group">
+                                <label>超时时间 (秒):</label>
+                                <input type="number" id="drainTimeout" value="300" min="60" max="3600" />
+                            </div>
+                        </div>
+                        
+                        <div class="affected-pods">
+                            <h4>受影响的Pod (估计):</h4>
+                            <div class="pod-summary">
+                                <div class="summary-item">
+                                    <span class="summary-label">总Pod数:</span>
+                                    <span class="summary-value">140</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">DaemonSet Pod:</span>
+                                    <span class="summary-value">8</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">需要驱逐:</span>
+                                    <span class="summary-value">132</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-default">取消</button>
+                        <button class="btn btn-danger">确认驱逐</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operation Progress Modal -->
+            <div class="modal" id="progressModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>批量操作进度</h3>
+                    </div>
+                    <div class="modal-body">
+                        <div class="operation-progress">
+                            <div class="progress-header">
+                                <h4>正在执行: 批量添加标签</h4>
+                                <span class="progress-status">2/3 完成</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 67%"></div>
+                            </div>
+                            
+                            <div class="operation-log">
+                                <div class="log-item success">
+                                    <i class="fas fa-check"></i>
+                                    <span class="log-time">14:32:01</span>
+                                    <span class="log-message">worker-1: 标签添加成功</span>
+                                </div>
+                                <div class="log-item success">
+                                    <i class="fas fa-check"></i>
+                                    <span class="log-time">14:32:02</span>
+                                    <span class="log-message">worker-2: 标签添加成功</span>
+                                </div>
+                                <div class="log-item processing">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <span class="log-time">14:32:03</span>
+                                    <span class="log-message">worker-3: 正在添加标签...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-default" disabled>关闭</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="prototype-nav">
+        <h3>原型页面导航</h3>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">集群列表</a>
+            <a href="cluster-detail.html" class="nav-link">集群详情</a>
+            <a href="cluster-import.html" class="nav-link">导入集群</a>
+            <a href="node-list.html" class="nav-link">节点列表</a>
+            <a href="node-detail.html" class="nav-link">节点详情</a>
+            <a href="node-operations.html" class="nav-link active">节点操作</a>
+            <a href="pod-list.html" class="nav-link">Pod列表</a>
+            <a href="pod-detail.html" class="nav-link">Pod详情</a>
+            <a href="workload-list.html" class="nav-link">工作负载</a>
+            <a href="workload-detail.html" class="nav-link">工作负载详情</a>
+            <a href="global-search.html" class="nav-link">全局搜索</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

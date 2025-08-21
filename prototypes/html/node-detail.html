@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>worker-1 节点详情 - K8s管理平台</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">
+                <i class="fas fa-dharmachakra"></i>
+                <span>K8s管理平台</span>
+            </div>
+        </div>
+        
+        <div class="header-center">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="搜索Pod、Deployment、Service..." />
+                <span class="shortcut">⌘K</span>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <div class="notification">
+                <i class="fas fa-bell"></i>
+                <span class="badge">3</span>
+            </div>
+            <div class="user-menu">
+                <i class="fas fa-user-circle"></i>
+                <span>Admin</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="nav-menu">
+                <div class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>仪表盘</span>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-server"></i>
+                        <span>集群管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item active">
+                        <i class="fas fa-desktop"></i>
+                        <span>节点管理</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="submenu">
+                        <div class="submenu-item">
+                            <i class="fas fa-list"></i>
+                            <span>节点列表</span>
+                        </div>
+                        <div class="submenu-item current">
+                            <i class="fas fa-eye"></i>
+                            <span>节点详情</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-rocket"></i>
+                        <span>工作负载</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-cube"></i>
+                        <span>Pod管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-item">
+                    <i class="fas fa-search"></i>
+                    <span>全局搜索</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <i class="fas fa-home"></i>
+                <span>首页</span>
+                <i class="fas fa-chevron-right"></i>
+                <i class="fas fa-desktop"></i>
+                <span>节点管理</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>worker-1</span>
+            </div>
+
+            <!-- Node Header -->
+            <div class="node-header">
+                <div class="node-info">
+                    <div class="node-title">
+                        <span class="status-badge success">
+                            <i class="fas fa-check-circle"></i>
+                        </span>
+                        <h1>worker-1</h1>
+                        <span class="node-type">Worker节点</span>
+                    </div>
+                    <div class="node-meta">
+                        <span>kubelet v1.28.2</span>
+                        <span>IP: 192.168.1.101</span>
+                        <span>最后心跳: 30秒前</span>
+                        <span>创建时间: 2024-01-15 10:30:00</span>
+                    </div>
+                </div>
+                <div class="node-actions">
+                    <button class="btn btn-primary">
+                        <i class="fas fa-terminal"></i>
+                        节点终端
+                    </button>
+                    <button class="btn btn-default">
+                        <i class="fas fa-edit"></i>
+                        编辑标签
+                    </button>
+                    <button class="btn btn-default">
+                        <i class="fas fa-cog"></i>
+                        管理污点
+                    </button>
+                    <button class="btn btn-warning">
+                        <i class="fas fa-pause"></i>
+                        Cordon
+                    </button>
+                    <button class="btn btn-danger">
+                        <i class="fas fa-tint"></i>
+                        Drain
+                    </button>
+                </div>
+            </div>
+
+            <!-- Node Tabs -->
+            <div class="node-tabs">
+                <div class="tab-nav">
+                    <button class="tab-btn active" data-tab="overview">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>概览</span>
+                    </button>
+                    <button class="tab-btn" data-tab="resources">
+                        <i class="fas fa-microchip"></i>
+                        <span>资源</span>
+                    </button>
+                    <button class="tab-btn" data-tab="pods">
+                        <i class="fas fa-cube"></i>
+                        <span>Pod</span>
+                    </button>
+                    <button class="tab-btn" data-tab="events">
+                        <i class="fas fa-history"></i>
+                        <span>事件</span>
+                    </button>
+                    <button class="tab-btn" data-tab="labels">
+                        <i class="fas fa-tags"></i>
+                        <span>标签</span>
+                    </button>
+                    <button class="tab-btn" data-tab="taints">
+                        <i class="fas fa-ban"></i>
+                        <span>污点</span>
+                    </button>
+                    <button class="tab-btn" data-tab="monitoring">
+                        <i class="fas fa-chart-line"></i>
+                        <span>监控</span>
+                    </button>
+                    <button class="tab-btn" data-tab="terminal">
+                        <i class="fas fa-terminal"></i>
+                        <span>终端</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Overview Tab -->
+                <div class="tab-pane active" id="overview">
+                    <div class="overview-grid">
+                        <div class="overview-card">
+                            <h3>节点状态</h3>
+                            <div class="node-status">
+                                <div class="status-item">
+                                    <span class="status-label">Ready</span>
+                                    <span class="status-icon success">
+                                        <i class="fas fa-check-circle"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="overview-card">
+                            <h3>调度状态</h3>
+                            <div class="schedule-status">
+                                <div class="status-item">
+                                    <span class="status-label">可调度</span>
+                                    <span class="status-icon success">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="overview-card">
+                            <h3>网络状态</h3>
+                            <div class="network-status">
+                                <div class="status-item">
+                                    <span class="status-label">正常</span>
+                                    <span class="status-icon success">
+                                        <i class="fas fa-globe"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <h3>资源使用情况</h3>
+                        <div class="resource-usage">
+                            <div class="usage-item">
+                                <div class="usage-label">CPU使用率</div>
+                                <div class="usage-bar">
+                                    <div class="usage-fill" style="width: 70%"></div>
+                                    <span class="usage-text">70% (2.8/4 cores)</span>
+                                </div>
+                            </div>
+                            <div class="usage-item">
+                                <div class="usage-label">内存使用率</div>
+                                <div class="usage-bar">
+                                    <div class="usage-fill" style="width: 65%"></div>
+                                    <span class="usage-text">65% (5.2GB/8GB)</span>
+                                </div>
+                            </div>
+                            <div class="usage-item">
+                                <div class="usage-label">存储使用率</div>
+                                <div class="usage-bar">
+                                    <div class="usage-fill" style="width: 40%"></div>
+                                    <span class="usage-text">40% (40GB/100GB)</span>
+                                </div>
+                            </div>
+                            <div class="usage-item">
+                                <div class="usage-label">Pod数量</div>
+                                <div class="usage-bar">
+                                    <div class="usage-fill" style="width: 13.6%"></div>
+                                    <span class="usage-text">15/110</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <h3>系统信息</h3>
+                        <div class="system-info">
+                            <div class="info-row">
+                                <span class="info-label">操作系统:</span>
+                                <span class="info-value">Ubuntu 20.04.6 LTS</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">内核版本:</span>
+                                <span class="info-value">5.4.0-150-generic</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">容器运行时:</span>
+                                <span class="info-value">containerd://1.6.21</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">kubelet版本:</span>
+                                <span class="info-value">v1.28.2</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">kube-proxy版本:</span>
+                                <span class="info-value">v1.28.2</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">架构:</span>
+                                <span class="info-value">amd64</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">启动时间:</span>
+                                <span class="info-value">2024-08-01 09:15:23 (运行14天)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resources Tab -->
+                <div class="tab-pane" id="resources">
+                    <div class="content-card">
+                        <h3>资源分配情况</h3>
+                        
+                        <div class="resource-section">
+                            <h4>CPU资源</h4>
+                            <div class="resource-details">
+                                <div class="resource-item">
+                                    <span class="resource-label">总容量:</span>
+                                    <span class="resource-value">4 cores</span>
+                                </div>
+                                <div class="resource-item">
+                                    <span class="resource-label">已分配:</span>
+                                    <span class="resource-value">2.8 cores (70%)</span>
+                                </div>
+                                <div class="resource-item">
+                                    <span class="resource-label">可分配:</span>
+                                    <span class="resource-value">3.8 cores (95%)</span>
+                                </div>
+                                <div class="resource-item">
+                                    <span class="resource-label">系统预留:</span>
+                                    <span class="resource-value">0.2 cores (5%)</span>
+                                </div>
+                                <div class="resource-bar">
+                                    <div class="resource-fill" style="width: 70%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="resource-section">
+                            <h4>内存资源</h4>
+                            <div class="resource-details">
+                                <div class="resource-item">
+                                    <span class="resource-label">总容量:</span>
+                                    <span class="resource-value">8GB</span>
+                                </div>
+                                <div class="resource-item">
+                                    <span class="resource-label">已使用:</span>
+                                    <span class="resource-value">5.2GB (65%)</span>
+                                </div>
+                                <div class="resource-item">
+                                    <span class="resource-label">可分配:</span>
+                                    <span class="resource-value">7.2GB (90%)</span>
+                                </div>
+                                <div class="resource-item">
+                                    <span class="resource-label">系统预留:</span>
+                                    <span class="resource-value">0.8GB (10%)</span>
+                                </div>
+                                <div class="resource-bar">
+                                    <div class="resource-fill" style="width: 65%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="resource-section">
+                            <h4>存储资源</h4>
+                            <div class="storage-list">
+                                <div class="storage-item">
+                                    <span class="storage-path">根分区:</span>
+                                    <span class="storage-usage">40GB/100GB (40%)</span>
+                                    <div class="storage-bar">
+                                        <div class="storage-fill" style="width: 40%"></div>
+                                    </div>
+                                </div>
+                                <div class="storage-item">
+                                    <span class="storage-path">/var/lib/containerd:</span>
+                                    <span class="storage-usage">25GB/60GB (42%)</span>
+                                    <div class="storage-bar">
+                                        <div class="storage-fill" style="width: 42%"></div>
+                                    </div>
+                                </div>
+                                <div class="storage-item">
+                                    <span class="storage-path">/var/log:</span>
+                                    <span class="storage-usage">2GB/10GB (20%)</span>
+                                    <div class="storage-bar">
+                                        <div class="storage-fill" style="width: 20%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="resource-section">
+                            <h4>网络资源</h4>
+                            <div class="network-details">
+                                <div class="network-item">
+                                    <span class="network-label">Pod CIDR:</span>
+                                    <span class="network-value">10.244.1.0/24</span>
+                                </div>
+                                <div class="network-item">
+                                    <span class="network-label">已分配IP:</span>
+                                    <span class="network-value">15/254</span>
+                                </div>
+                                <div class="network-item">
+                                    <span class="network-label">网络插件:</span>
+                                    <span class="network-value">flannel</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pods Tab -->
+                <div class="tab-pane" id="pods">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>运行中的Pod (15个)</h3>
+                            <div class="pod-filters">
+                                <input type="text" placeholder="搜索Pod..." class="filter-input" />
+                                <select class="filter-select">
+                                    <option>命名空间: 全部</option>
+                                    <option>default</option>
+                                    <option>kube-system</option>
+                                    <option>prod</option>
+                                </select>
+                                <select class="filter-select">
+                                    <option>状态: 全部</option>
+                                    <option>Running</option>
+                                    <option>Pending</option>
+                                    <option>Failed</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>状态</th>
+                                        <th>Pod名称</th>
+                                        <th>命名空间</th>
+                                        <th>状态</th>
+                                        <th>重启次数</th>
+                                        <th>CPU</th>
+                                        <th>内存</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <span class="status-badge success">
+                                                <i class="fas fa-check-circle"></i>
+                                            </span>
+                                        </td>
+                                        <td>nginx-deployment-xxx</td>
+                                        <td>default</td>
+                                        <td>Running</td>
+                                        <td>0</td>
+                                        <td>50m</td>
+                                        <td>128Mi</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-icon" title="查看详情">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn-icon" title="查看日志">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </button>
+                                                <button class="btn-icon" title="进入终端">
+                                                    <i class="fas fa-terminal"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <span class="status-badge success">
+                                                <i class="fas fa-check-circle"></i>
+                                            </span>
+                                        </td>
+                                        <td>api-server-xxx</td>
+                                        <td>kube-system</td>
+                                        <td>Running</td>
+                                        <td>0</td>
+                                        <td>100m</td>
+                                        <td>256Mi</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-icon" title="查看详情">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn-icon" title="查看日志">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </button>
+                                                <button class="btn-icon" title="进入终端">
+                                                    <i class="fas fa-terminal"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <span class="status-badge success">
+                                                <i class="fas fa-check-circle"></i>
+                                            </span>
+                                        </td>
+                                        <td>coredns-xxx</td>
+                                        <td>kube-system</td>
+                                        <td>Running</td>
+                                        <td>0</td>
+                                        <td>50m</td>
+                                        <td>64Mi</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-icon" title="查看详情">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn-icon" title="查看日志">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </button>
+                                                <button class="btn-icon" title="进入终端">
+                                                    <i class="fas fa-terminal"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <span class="status-badge warning">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                            </span>
+                                        </td>
+                                        <td>mysql-xxx</td>
+                                        <td>prod</td>
+                                        <td>Running</td>
+                                        <td>2</td>
+                                        <td>200m</td>
+                                        <td>512Mi</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-icon" title="查看详情">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn-icon" title="查看日志">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </button>
+                                                <button class="btn-icon" title="进入终端">
+                                                    <i class="fas fa-terminal"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <span class="status-badge success">
+                                                <i class="fas fa-check-circle"></i>
+                                            </span>
+                                        </td>
+                                        <td>redis-xxx</td>
+                                        <td>prod</td>
+                                        <td>Running</td>
+                                        <td>0</td>
+                                        <td>30m</td>
+                                        <td>32Mi</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-icon" title="查看详情">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn-icon" title="查看日志">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </button>
+                                                <button class="btn-icon" title="进入终端">
+                                                    <i class="fas fa-terminal"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <h3>Pod资源使用统计</h3>
+                        <div class="pod-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">总CPU请求:</span>
+                                <span class="stat-value">430m/4000m (10.75%)</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">总内存请求:</span>
+                                <span class="stat-value">992Mi/8Gi (12.1%)</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">系统Pod:</span>
+                                <span class="stat-value">5个</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">用户Pod:</span>
+                                <span class="stat-value">10个</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Events Tab -->
+                <div class="tab-pane" id="events">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>节点事件 (最近100条)</h3>
+                            <div class="event-filters">
+                                <input type="text" placeholder="搜索事件..." class="filter-input" />
+                                <select class="filter-select">
+                                    <option>类型: 全部</option>
+                                    <option>Normal</option>
+                                    <option>Warning</option>
+                                    <option>Error</option>
+                                </select>
+                                <select class="filter-select">
+                                    <option>时间范围</option>
+                                    <option>最近1小时</option>
+                                    <option>最近24小时</option>
+                                    <option>最近7天</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="events-list">
+                            <div class="event-item">
+                                <div class="event-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="event-time">2分钟前</div>
+                                    <div class="event-message">Node worker-1 status is now: Ready</div>
+                                    <div class="event-source">来源: kubelet</div>
+                                </div>
+                            </div>
+                            
+                            <div class="event-item">
+                                <div class="event-icon warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="event-time">5分钟前</div>
+                                    <div class="event-message">高内存使用率警告 (75%)</div>
+                                    <div class="event-source">来源: monitor</div>
+                                </div>
+                            </div>
+                            
+                            <div class="event-item">
+                                <div class="event-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="event-time">10分钟前</div>
+                                    <div class="event-message">Pod nginx-xxx 成功调度</div>
+                                    <div class="event-source">来源: scheduler</div>
+                                </div>
+                            </div>
+                            
+                            <div class="event-item">
+                                <div class="event-icon error">
+                                    <i class="fas fa-times-circle"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="event-time">15分钟前</div>
+                                    <div class="event-message">磁盘空间不足警告</div>
+                                    <div class="event-source">来源: kubelet</div>
+                                </div>
+                            </div>
+                            
+                            <div class="event-item">
+                                <div class="event-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="event-time">20分钟前</div>
+                                    <div class="event-message">网络连接恢复正常</div>
+                                    <div class="event-source">来源: network</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Labels Tab -->
+                <div class="tab-pane" id="labels">
+                    <div class="content-card">
+                        <h3>系统标签 (只读)</h3>
+                        <div class="labels-section">
+                            <div class="label-item system">
+                                <span class="label-key">kubernetes.io/arch</span>
+                                <span class="label-value">amd64</span>
+                            </div>
+                            <div class="label-item system">
+                                <span class="label-key">kubernetes.io/hostname</span>
+                                <span class="label-value">worker-1</span>
+                            </div>
+                            <div class="label-item system">
+                                <span class="label-key">kubernetes.io/os</span>
+                                <span class="label-value">linux</span>
+                            </div>
+                            <div class="label-item system">
+                                <span class="label-key">node.kubernetes.io/instance-type</span>
+                                <span class="label-value">m5.large</span>
+                            </div>
+                            <div class="label-item system">
+                                <span class="label-key">topology.kubernetes.io/region</span>
+                                <span class="label-value">us-west-1</span>
+                            </div>
+                            <div class="label-item system">
+                                <span class="label-key">topology.kubernetes.io/zone</span>
+                                <span class="label-value">us-west-1a</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <h3>自定义标签</h3>
+                        <div class="labels-section">
+                            <div class="label-item custom">
+                                <span class="label-key">environment</span>
+                                <span class="label-value">production</span>
+                                <button class="label-delete">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="label-item custom">
+                                <span class="label-key">team</span>
+                                <span class="label-value">backend</span>
+                                <button class="label-delete">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="label-item custom">
+                                <span class="label-key">maintenance-window</span>
+                                <span class="label-value">sunday-2am</span>
+                                <button class="label-delete">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="add-label">
+                            <h4>添加新标签</h4>
+                            <div class="label-form">
+                                <input type="text" placeholder="键" class="label-key-input" />
+                                <input type="text" placeholder="值" class="label-value-input" />
+                                <button class="btn btn-primary">添加</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Taints Tab -->
+                <div class="tab-pane" id="taints">
+                    <div class="content-card">
+                        <h3>当前污点</h3>
+                        <div class="taints-section">
+                            <div class="taint-item">
+                                <div class="taint-info">
+                                    <div class="taint-key">node.kubernetes.io/disk-pressure</div>
+                                    <div class="taint-effect">NoSchedule</div>
+                                    <div class="taint-desc">磁盘压力过高，暂停调度新Pod</div>
+                                </div>
+                                <button class="taint-delete">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="add-taint">
+                            <h4>添加新污点</h4>
+                            <div class="taint-form">
+                                <div class="form-row">
+                                    <label>键:</label>
+                                    <input type="text" placeholder="maintenance" class="taint-key-input" />
+                                </div>
+                                <div class="form-row">
+                                    <label>值:</label>
+                                    <input type="text" placeholder="scheduled" class="taint-value-input" />
+                                </div>
+                                <div class="form-row">
+                                    <label>效果:</label>
+                                    <select class="taint-effect-select">
+                                        <option value="NoSchedule">NoSchedule</option>
+                                        <option value="PreferNoSchedule">PreferNoSchedule</option>
+                                        <option value="NoExecute">NoExecute</option>
+                                    </select>
+                                </div>
+                                <div class="effect-descriptions">
+                                    <div>• NoSchedule: 不调度新Pod</div>
+                                    <div>• PreferNoSchedule: 尽量不调度</div>
+                                    <div>• NoExecute: 驱逐现有Pod</div>
+                                </div>
+                                <div class="form-actions">
+                                    <button class="btn btn-default">取消</button>
+                                    <button class="btn btn-primary">添加污点</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monitoring Tab -->
+                <div class="tab-pane" id="monitoring">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>节点监控 (最近24小时)</h3>
+                            <div class="monitoring-actions">
+                                <select class="time-range-select">
+                                    <option>1小时</option>
+                                    <option>6小时</option>
+                                    <option selected>24小时</option>
+                                    <option>7天</option>
+                                </select>
+                                <button class="btn btn-default">
+                                    <i class="fas fa-sync"></i>
+                                    刷新
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="monitoring-grid">
+                            <div class="chart-card">
+                                <h4>CPU使用率</h4>
+                                <div class="chart-placeholder">
+                                    <div class="chart-line">
+                                        <svg width="100%" height="200">
+                                            <polyline points="0,150 50,120 100,100 150,80 200,90 250,70 300,60" 
+                                                      fill="none" stroke="#1890ff" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <h4>内存使用率</h4>
+                                <div class="chart-placeholder">
+                                    <div class="chart-line">
+                                        <svg width="100%" height="200">
+                                            <polyline points="0,140 50,130 100,110 150,100 200,105 250,95 300,85" 
+                                                      fill="none" stroke="#52c41a" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <h4>网络流量</h4>
+                                <div class="chart-placeholder">
+                                    <div class="chart-line">
+                                        <svg width="100%" height="200">
+                                            <polyline points="0,160 50,140 100,120 150,110 200,130 250,115 300,100" 
+                                                      fill="none" stroke="#faad14" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <h4>磁盘IOPS</h4>
+                                <div class="chart-placeholder">
+                                    <div class="chart-line">
+                                        <svg width="100%" height="200">
+                                            <polyline points="0,170 50,150 100,130 150,120 200,140 250,125 300,110" 
+                                                      fill="none" stroke="#f5222d" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="real-time-metrics">
+                            <h4>实时指标</h4>
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <span class="metric-label">CPU:</span>
+                                    <span class="metric-value">70%</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">内存:</span>
+                                    <span class="metric-value">65%</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">磁盘:</span>
+                                    <span class="metric-value">40%</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">网络:</span>
+                                    <span class="metric-value">15MB/s</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">负载:</span>
+                                    <span class="metric-value">2.1, 1.8, 1.5</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">进程:</span>
+                                    <span class="metric-value">156</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">连接:</span>
+                                    <span class="metric-value">1024</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Terminal Tab -->
+                <div class="tab-pane" id="terminal">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>节点终端 (kubectl debug)</h3>
+                            <div class="terminal-status">
+                                <span class="connection-status success">
+                                    <i class="fas fa-circle"></i>
+                                    已连接
+                                </span>
+                                <span class="session-id">会话ID: debug-worker1-20240815</span>
+                            </div>
+                            <div class="terminal-actions">
+                                <button class="btn btn-default">
+                                    <i class="fas fa-sync"></i>
+                                    重新连接
+                                </button>
+                                <button class="btn btn-default">
+                                    <i class="fas fa-eraser"></i>
+                                    清屏
+                                </button>
+                                <button class="btn btn-default">
+                                    <i class="fas fa-download"></i>
+                                    下载日志
+                                </button>
+                                <button class="btn btn-danger">
+                                    <i class="fas fa-times"></i>
+                                    断开连接
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="terminal-container">
+                            <div class="terminal-output">
+                                <div class="terminal-line">
+                                    <span class="terminal-prompt">root@debug-worker1:~#</span>
+                                    <span class="terminal-command">ps aux | grep kubelet</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-text">root      1234  2.1  3.4 1234567 123456 ?   Ssl  10:30   0:45</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-text">/usr/bin/kubelet --config=/var/lib/kubelet/config.yaml</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-prompt">root@debug-worker1:~#</span>
+                                    <span class="terminal-command">df -h</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-text">Filesystem      Size  Used Avail Use% Mounted on</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-text">/dev/sda1        99G   40G   54G  43% /</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-text">/dev/sda2        60G   25G   32G  44% /var/lib/containerd</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-prompt">root@debug-worker1:~#</span>
+                                    <span class="terminal-command">systemctl status kubelet</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-text">● kubelet.service - kubelet: The Kubernetes Node Agent</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-text">   Loaded: loaded (/lib/systemd/system/kubelet.service)</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-text">   Active: active (running) since Mon 2024-08-01 09:15:23</span>
+                                </div>
+                                <div class="terminal-line">
+                                    <span class="terminal-prompt">root@debug-worker1:~#</span>
+                                    <span class="terminal-cursor">█</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="prototype-nav">
+        <h3>原型页面导航</h3>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">集群列表</a>
+            <a href="cluster-detail.html" class="nav-link">集群详情</a>
+            <a href="node-list.html" class="nav-link">节点列表</a>
+            <a href="node-detail.html" class="nav-link active">节点详情</a>
+            <a href="pod-list.html" class="nav-link">Pod列表</a>
+            <a href="workload-list.html" class="nav-link">工作负载</a>
+            <a href="workload-detail.html" class="nav-link">工作负载详情</a>
+            <a href="global-search.html" class="nav-link">全局搜索</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

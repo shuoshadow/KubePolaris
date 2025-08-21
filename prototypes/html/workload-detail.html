@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>nginx-deployment - K8s管理平台</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">
+                <i class="fas fa-dharmachakra"></i>
+                <span>K8s管理平台</span>
+            </div>
+        </div>
+        
+        <div class="header-center">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="搜索Pod、Deployment、Service..." />
+                <span class="shortcut">⌘K</span>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <div class="notification">
+                <i class="fas fa-bell"></i>
+                <span class="badge">3</span>
+            </div>
+            <div class="user-menu">
+                <i class="fas fa-user-circle"></i>
+                <span>Admin</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="nav-menu">
+                <div class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>仪表盘</span>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-server"></i>
+                        <span>集群管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-desktop"></i>
+                        <span>节点管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item active">
+                        <i class="fas fa-rocket"></i>
+                        <span>工作负载</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="submenu">
+                        <div class="submenu-item">
+                            <i class="fas fa-list"></i>
+                            <span>工作负载列表</span>
+                        </div>
+                        <div class="submenu-item current">
+                            <i class="fas fa-eye"></i>
+                            <span>工作负载详情</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-cube"></i>
+                        <span>Pod管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-item">
+                    <i class="fas fa-search"></i>
+                    <span>全局搜索</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <i class="fas fa-home"></i>
+                <span>首页</span>
+                <i class="fas fa-chevron-right"></i>
+                <i class="fas fa-rocket"></i>
+                <span>工作负载</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>nginx-deployment</span>
+            </div>
+
+            <!-- Workload Header -->
+            <div class="workload-header">
+                <div class="workload-info">
+                    <div class="workload-title">
+                        <span class="status-badge success">
+                            <i class="fas fa-check-circle"></i>
+                        </span>
+                        <h1>nginx-deployment</h1>
+                        <span class="workload-type">Deployment</span>
+                    </div>
+                    <div class="workload-meta">
+                        <span>default 命名空间</span>
+                        <span>副本: 3/3 就绪</span>
+                        <span>镜像: nginx:1.20-alpine</span>
+                        <span>创建时间: 2024-08-10 14:30:00</span>
+                        <span>更新时间: 2024-08-15 09:15</span>
+                    </div>
+                </div>
+                <div class="workload-actions">
+                    <button class="btn btn-primary">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                        扩缩容
+                    </button>
+                    <button class="btn btn-default">
+                        <i class="fas fa-redo"></i>
+                        重启
+                    </button>
+                    <button class="btn btn-default">
+                        <i class="fas fa-edit"></i>
+                        编辑YAML
+                    </button>
+                    <button class="btn btn-default">
+                        <i class="fas fa-ellipsis-v"></i>
+                        更多操作
+                    </button>
+                </div>
+            </div>
+
+            <!-- Workload Tabs -->
+            <div class="workload-tabs">
+                <div class="tab-nav">
+                    <button class="tab-btn active" data-tab="overview">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>概览</span>
+                    </button>
+                    <button class="tab-btn" data-tab="pods">
+                        <i class="fas fa-cube"></i>
+                        <span>Pod</span>
+                    </button>
+                    <button class="tab-btn" data-tab="events">
+                        <i class="fas fa-history"></i>
+                        <span>事件</span>
+                    </button>
+                    <button class="tab-btn" data-tab="yaml">
+                        <i class="fas fa-code"></i>
+                        <span>YAML</span>
+                    </button>
+                    <button class="tab-btn" data-tab="monitoring">
+                        <i class="fas fa-chart-line"></i>
+                        <span>监控</span>
+                    </button>
+                    <button class="tab-btn" data-tab="logs">
+                        <i class="fas fa-file-alt"></i>
+                        <span>日志</span>
+                    </button>
+                    <button class="tab-btn" data-tab="versions">
+                        <i class="fas fa-code-branch"></i>
+                        <span>版本</span>
+                    </button>
+                    <button class="tab-btn" data-tab="config">
+                        <i class="fas fa-cogs"></i>
+                        <span>配置</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Overview Tab -->
+                <div class="tab-pane active" id="overview">
+                    <div class="overview-grid">
+                        <div class="overview-card">
+                            <h3>副本状态</h3>
+                            <div class="replica-status">
+                                <div class="replica-count">3/3 就绪</div>
+                                <div class="replica-indicators">
+                                    <span class="replica-dot success"></span>
+                                    <span class="replica-dot success"></span>
+                                    <span class="replica-dot success"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="overview-card">
+                            <h3>更新策略</h3>
+                            <div class="strategy-info">
+                                <div class="strategy-type">滚动更新</div>
+                                <div class="strategy-details">
+                                    <div>最大25%不可用</div>
+                                    <div>最大25%激增</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="overview-card">
+                            <h3>标签选择器</h3>
+                            <div class="labels">
+                                <span class="label-tag">app=nginx</span>
+                                <span class="label-tag">version=v1.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <h3>容器信息</h3>
+                        <div class="container-info">
+                            <div class="container-item">
+                                <div class="container-header">
+                                    <h4>nginx</h4>
+                                    <span class="container-image">nginx:1.20-alpine</span>
+                                </div>
+                                <div class="container-details">
+                                    <div class="detail-row">
+                                        <span class="detail-label">端口:</span>
+                                        <span class="detail-value">80/TCP</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">资源限制:</span>
+                                        <span class="detail-value">CPU 200m, 内存 256Mi</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">资源请求:</span>
+                                        <span class="detail-value">CPU 100m, 内存 128Mi</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">环境变量:</span>
+                                        <span class="detail-value">3个</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">挂载卷:</span>
+                                        <span class="detail-value">2个</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <h3>服务发现</h3>
+                        <div class="service-discovery">
+                            <div class="service-item">
+                                <i class="fas fa-network-wired"></i>
+                                <div class="service-info">
+                                    <div class="service-name">nginx-service</div>
+                                    <div class="service-type">ClusterIP</div>
+                                </div>
+                            </div>
+                            <div class="service-item">
+                                <i class="fas fa-globe"></i>
+                                <div class="service-info">
+                                    <div class="service-name">nginx-ingress</div>
+                                    <div class="service-type">nginx.example.com</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <h3>资源使用统计</h3>
+                        <div class="resource-usage">
+                            <div class="usage-item">
+                                <div class="usage-label">CPU使用</div>
+                                <div class="usage-bar">
+                                    <div class="usage-fill" style="width: 40%"></div>
+                                    <span class="usage-text">40% (120m/300m)</span>
+                                </div>
+                            </div>
+                            <div class="usage-item">
+                                <div class="usage-label">内存使用</div>
+                                <div class="usage-bar">
+                                    <div class="usage-fill" style="width: 60%"></div>
+                                    <span class="usage-text">60% (180Mi/300Mi)</span>
+                                </div>
+                            </div>
+                            <div class="usage-item">
+                                <div class="usage-label">网络流量</div>
+                                <div class="usage-text">入站 15MB/s, 出站 8MB/s</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pods Tab -->
+                <div class="tab-pane" id="pods">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>关联Pod列表 (3个)</h3>
+                            <div class="pod-filters">
+                                <input type="text" placeholder="搜索Pod..." class="filter-input" />
+                                <select class="filter-select">
+                                    <option>状态: 全部</option>
+                                    <option>运行中</option>
+                                    <option>待处理</option>
+                                    <option>失败</option>
+                                </select>
+                                <select class="filter-select">
+                                    <option>节点: 全部</option>
+                                    <option>worker-1</option>
+                                    <option>worker-2</option>
+                                    <option>worker-3</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>状态</th>
+                                        <th>Pod名称</th>
+                                        <th>节点</th>
+                                        <th>状态</th>
+                                        <th>重启次数</th>
+                                        <th>CPU</th>
+                                        <th>内存</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <span class="status-badge success">
+                                                <i class="fas fa-check-circle"></i>
+                                            </span>
+                                        </td>
+                                        <td>nginx-deployment-xxx-abc</td>
+                                        <td>worker-1</td>
+                                        <td>Running</td>
+                                        <td>0</td>
+                                        <td>40m</td>
+                                        <td>60Mi</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-icon" title="查看详情">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn-icon" title="查看日志">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </button>
+                                                <button class="btn-icon" title="进入终端">
+                                                    <i class="fas fa-terminal"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <span class="status-badge success">
+                                                <i class="fas fa-check-circle"></i>
+                                            </span>
+                                        </td>
+                                        <td>nginx-deployment-xxx-def</td>
+                                        <td>worker-2</td>
+                                        <td>Running</td>
+                                        <td>0</td>
+                                        <td>45m</td>
+                                        <td>65Mi</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-icon" title="查看详情">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn-icon" title="查看日志">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </button>
+                                                <button class="btn-icon" title="进入终端">
+                                                    <i class="fas fa-terminal"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <span class="status-badge success">
+                                                <i class="fas fa-check-circle"></i>
+                                            </span>
+                                        </td>
+                                        <td>nginx-deployment-xxx-ghi</td>
+                                        <td>worker-3</td>
+                                        <td>Running</td>
+                                        <td>1</td>
+                                        <td>35m</td>
+                                        <td>55Mi</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-icon" title="查看详情">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn-icon" title="查看日志">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </button>
+                                                <button class="btn-icon" title="进入终端">
+                                                    <i class="fas fa-terminal"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <h3>Pod健康检查</h3>
+                        <div class="health-checks">
+                            <div class="health-item">
+                                <span class="health-status success">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                                <div class="health-info">
+                                    <div class="health-name">就绪检查</div>
+                                    <div class="health-desc">HTTP GET :80/health (所有Pod通过)</div>
+                                </div>
+                            </div>
+                            <div class="health-item">
+                                <span class="health-status success">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                                <div class="health-info">
+                                    <div class="health-name">存活检查</div>
+                                    <div class="health-desc">HTTP GET :80/health (所有Pod通过)</div>
+                                </div>
+                            </div>
+                            <div class="health-item">
+                                <span class="health-status success">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                                <div class="health-info">
+                                    <div class="health-name">启动检查</div>
+                                    <div class="health-desc">HTTP GET :80/ready (所有Pod通过)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Events Tab -->
+                <div class="tab-pane" id="events">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>部署事件 (最近50条)</h3>
+                            <div class="event-filters">
+                                <input type="text" placeholder="搜索事件..." class="filter-input" />
+                                <select class="filter-select">
+                                    <option>类型: 全部</option>
+                                    <option>Normal</option>
+                                    <option>Warning</option>
+                                    <option>Error</option>
+                                </select>
+                                <select class="filter-select">
+                                    <option>时间范围</option>
+                                    <option>最近1小时</option>
+                                    <option>最近24小时</option>
+                                    <option>最近7天</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="events-list">
+                            <div class="event-item">
+                                <div class="event-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="event-time">2分钟前</div>
+                                    <div class="event-message">Deployment 扩容完成 (2→3)</div>
+                                    <div class="event-source">来源: controller</div>
+                                </div>
+                            </div>
+                            
+                            <div class="event-item">
+                                <div class="event-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="event-time">5分钟前</div>
+                                    <div class="event-message">Pod nginx-deployment-xxx-ghi 创建成功</div>
+                                    <div class="event-source">来源: scheduler</div>
+                                </div>
+                            </div>
+                            
+                            <div class="event-item">
+                                <div class="event-icon warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="event-time">10分钟前</div>
+                                    <div class="event-message">镜像拉取耗时较长</div>
+                                    <div class="event-source">来源: kubelet</div>
+                                </div>
+                            </div>
+                            
+                            <div class="event-item">
+                                <div class="event-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="event-time">15分钟前</div>
+                                    <div class="event-message">ReplicaSet 创建成功</div>
+                                    <div class="event-source">来源: controller</div>
+                                </div>
+                            </div>
+                            
+                            <div class="event-item">
+                                <div class="event-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="event-time">20分钟前</div>
+                                    <div class="event-message">Deployment 更新开始</div>
+                                    <div class="event-source">来源: controller</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- YAML Tab -->
+                <div class="tab-pane" id="yaml">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>YAML 配置编辑</h3>
+                            <div class="yaml-actions">
+                                <button class="btn btn-default yaml-mode-btn active" data-mode="readonly">只读模式</button>
+                                <button class="btn btn-default yaml-mode-btn" data-mode="edit">编辑模式</button>
+                                <button class="btn btn-primary">验证</button>
+                                <button class="btn btn-success">应用更改</button>
+                            </div>
+                        </div>
+                        
+                        <div class="yaml-editor">
+                            <pre class="yaml-content"><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: default
+  labels:
+    app: nginx
+    version: v1.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.20-alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5</code></pre>
+                        </div>
+                        
+                        <div class="yaml-validation">
+                            <span class="validation-status success">
+                                <i class="fas fa-check-circle"></i>
+                                YAML格式正确，无语法错误
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Other tabs would be implemented similarly -->
+                <div class="tab-pane" id="monitoring">
+                    <div class="content-card">
+                        <h3>监控图表</h3>
+                        <p>监控功能正在开发中...</p>
+                    </div>
+                </div>
+
+                <div class="tab-pane" id="logs">
+                    <div class="content-card">
+                        <h3>日志聚合</h3>
+                        <p>日志功能正在开发中...</p>
+                    </div>
+                </div>
+
+                <div class="tab-pane" id="versions">
+                    <div class="content-card">
+                        <h3>版本历史</h3>
+                        <p>版本管理功能正在开发中...</p>
+                    </div>
+                </div>
+
+                <div class="tab-pane" id="config">
+                    <div class="content-card">
+                        <h3>配置管理</h3>
+                        <p>配置管理功能正在开发中...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="prototype-nav">
+        <h3>原型页面导航</h3>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">集群列表</a>
+            <a href="cluster-detail.html" class="nav-link">集群详情</a>
+            <a href="node-list.html" class="nav-link">节点列表</a>
+            <a href="pod-list.html" class="nav-link">Pod列表</a>
+            <a href="workload-list.html" class="nav-link">工作负载</a>
+            <a href="workload-detail.html" class="nav-link active">工作负载详情</a>
+            <a href="global-search.html" class="nav-link">全局搜索</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

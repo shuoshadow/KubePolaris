@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>集群详情 - K8s管理平台</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">
+                <i class="fas fa-dharmachakra"></i>
+                <span>K8s管理平台</span>
+            </div>
+        </div>
+        
+        <div class="header-center">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="搜索Pod、Deployment、Service..." />
+                <span class="shortcut">⌘K</span>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <div class="notification">
+                <i class="fas fa-bell"></i>
+                <span class="badge">3</span>
+            </div>
+            <div class="user-menu">
+                <i class="fas fa-user-circle"></i>
+                <span>Admin</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="nav-menu">
+                <div class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>仪表盘</span>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item active">
+                        <i class="fas fa-server"></i>
+                        <span>集群管理</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="submenu">
+                        <div class="submenu-item">
+                            <i class="fas fa-list"></i>
+                            <span>集群列表</span>
+                        </div>
+                        <div class="submenu-item current">
+                            <i class="fas fa-info-circle"></i>
+                            <span>集群详情</span>
+                        </div>
+                        <div class="submenu-item">
+                            <i class="fas fa-plus"></i>
+                            <span>导入集群</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-desktop"></i>
+                        <span>节点管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-rocket"></i>
+                        <span>工作负载</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-cube"></i>
+                        <span>Pod管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-item">
+                    <i class="fas fa-search"></i>
+                    <span>全局搜索</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <i class="fas fa-home"></i>
+                <span>首页</span>
+                <i class="fas fa-chevron-right"></i>
+                <i class="fas fa-server"></i>
+                <span>集群管理</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>prod-k8s</span>
+            </div>
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-title">
+                    <div class="cluster-header">
+                        <div class="cluster-icon-large">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <div class="cluster-info-large">
+                            <h1>prod-k8s</h1>
+                            <p>生产环境集群</p>
+                            <div class="cluster-meta">
+                                <span class="status-badge success">
+                                    <i class="fas fa-check-circle"></i>
+                                    健康
+                                </span>
+                                <span class="version-tag">v1.28.2</span>
+                                <span class="last-sync">最后同步: 2分钟前</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-default">
+                        <i class="fas fa-terminal"></i>
+                        Web终端
+                    </button>
+                    <button class="btn btn-default">
+                        <i class="fas fa-download"></i>
+                        下载Kubeconfig
+                    </button>
+                    <button class="btn btn-default">
+                        <i class="fas fa-sync"></i>
+                        刷新
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cluster Overview Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon success">
+                        <i class="fas fa-desktop"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">5</div>
+                        <div class="stat-label">节点总数</div>
+                        <div class="stat-detail">5个就绪</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon primary">
+                        <i class="fas fa-cube"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">89</div>
+                        <div class="stat-label">Pod总数</div>
+                        <div class="stat-detail">85个运行中</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon info">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">23</div>
+                        <div class="stat-label">工作负载</div>
+                        <div class="stat-detail">21个正常</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon warning">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">15</div>
+                        <div class="stat-label">服务数</div>
+                        <div class="stat-detail">12个可用</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <div class="tabs-container">
+                <div class="tabs-nav">
+                    <button class="tab-item active">概览</button>
+                    <button class="tab-item">节点</button>
+                    <button class="tab-item">工作负载</button>
+                    <button class="tab-item">网络</button>
+                    <button class="tab-item">存储</button>
+                    <button class="tab-item">配置</button>
+                    <button class="tab-item">事件</button>
+                </div>
+                
+                <div class="tab-content">
+                    <!-- Overview Tab -->
+                    <div class="tab-pane active">
+                        <div class="overview-grid">
+                            <!-- Resource Usage Chart -->
+                            <div class="content-card">
+                                <div class="card-header">
+                                    <h3>资源使用情况</h3>
+                                    <div class="time-range">
+                                        <select>
+                                            <option>最近1小时</option>
+                                            <option>最近6小时</option>
+                                            <option>最近24小时</option>
+                                            <option>最近7天</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="chart-container">
+                                    <div class="resource-metrics">
+                                        <div class="metric-item">
+                                            <div class="metric-label">CPU使用率</div>
+                                            <div class="metric-value">65%</div>
+                                            <div class="metric-chart">
+                                                <div class="chart-placeholder">
+                                                    📊 CPU使用率趋势图
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">内存使用率</div>
+                                            <div class="metric-value">72%</div>
+                                            <div class="metric-chart">
+                                                <div class="chart-placeholder">
+                                                    📊 内存使用率趋势图
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Node Status -->
+                            <div class="content-card">
+                                <div class="card-header">
+                                    <h3>节点状态</h3>
+                                    <a href="node-list.html" class="view-all">查看全部</a>
+                                </div>
+                                <div class="node-list">
+                                    <div class="node-item">
+                                        <div class="node-info">
+                                            <i class="fas fa-desktop node-icon"></i>
+                                            <div>
+                                                <div class="node-name">master-01</div>
+                                                <div class="node-role">Master</div>
+                                            </div>
+                                        </div>
+                                        <div class="node-status">
+                                            <span class="status-badge success">就绪</span>
+                                        </div>
+                                        <div class="node-resources">
+                                            <div class="resource-bar">
+                                                <span>CPU: 45%</span>
+                                                <div class="progress-bar">
+                                                    <div class="progress-fill" style="width: 45%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="node-item">
+                                        <div class="node-info">
+                                            <i class="fas fa-desktop node-icon"></i>
+                                            <div>
+                                                <div class="node-name">worker-01</div>
+                                                <div class="node-role">Worker</div>
+                                            </div>
+                                        </div>
+                                        <div class="node-status">
+                                            <span class="status-badge success">就绪</span>
+                                        </div>
+                                        <div class="node-resources">
+                                            <div class="resource-bar">
+                                                <span>CPU: 78%</span>
+                                                <div class="progress-bar">
+                                                    <div class="progress-fill" style="width: 78%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="node-item">
+                                        <div class="node-info">
+                                            <i class="fas fa-desktop node-icon"></i>
+                                            <div>
+                                                <div class="node-name">worker-02</div>
+                                                <div class="node-role">Worker</div>
+                                            </div>
+                                        </div>
+                                        <div class="node-status">
+                                            <span class="status-badge warning">告警</span>
+                                        </div>
+                                        <div class="node-resources">
+                                            <div class="resource-bar">
+                                                <span>CPU: 92%</span>
+                                                <div class="progress-bar">
+                                                    <div class="progress-fill warning" style="width: 92%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recent Events -->
+                            <div class="content-card">
+                                <div class="card-header">
+                                    <h3>最近事件</h3>
+                                    <a href="#" class="view-all">查看全部</a>
+                                </div>
+                                <div class="event-list">
+                                    <div class="event-item">
+                                        <div class="event-icon success">
+                                            <i class="fas fa-check"></i>
+                                        </div>
+                                        <div class="event-content">
+                                            <div class="event-message">Pod nginx-deployment-7d5c6d8b4f-xyz12 创建成功</div>
+                                            <div class="event-time">2分钟前</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="event-item">
+                                        <div class="event-icon warning">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                        </div>
+                                        <div class="event-content">
+                                            <div class="event-message">节点 worker-02 CPU使用率过高</div>
+                                            <div class="event-time">5分钟前</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="event-item">
+                                        <div class="event-icon info">
+                                            <i class="fas fa-info"></i>
+                                        </div>
+                                        <div class="event-content">
+                                            <div class="event-message">Service redis-service 端点更新</div>
+                                            <div class="event-time">10分钟前</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Workload Status -->
+                            <div class="content-card">
+                                <div class="card-header">
+                                    <h3>工作负载状态</h3>
+                                    <a href="workload-list.html" class="view-all">查看全部</a>
+                                </div>
+                                <div class="workload-summary">
+                                    <div class="workload-type">
+                                        <div class="workload-icon">
+                                            <i class="fas fa-rocket"></i>
+                                        </div>
+                                        <div class="workload-info">
+                                            <div class="workload-name">Deployments</div>
+                                            <div class="workload-count">12个</div>
+                                        </div>
+                                        <div class="workload-status">
+                                            <span class="status-badge success">11个正常</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="workload-type">
+                                        <div class="workload-icon">
+                                            <i class="fas fa-layer-group"></i>
+                                        </div>
+                                        <div class="workload-info">
+                                            <div class="workload-name">StatefulSets</div>
+                                            <div class="workload-count">3个</div>
+                                        </div>
+                                        <div class="workload-status">
+                                            <span class="status-badge success">3个正常</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="workload-type">
+                                        <div class="workload-icon">
+                                            <i class="fas fa-tasks"></i>
+                                        </div>
+                                        <div class="workload-info">
+                                            <div class="workload-name">DaemonSets</div>
+                                            <div class="workload-count">5个</div>
+                                        </div>
+                                        <div class="workload-status">
+                                            <span class="status-badge success">5个正常</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="prototype-nav">
+        <h3>原型页面导航</h3>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">集群列表</a>
+            <a href="cluster-detail.html" class="nav-link active">集群详情</a>
+            <a href="node-list.html" class="nav-link">节点列表</a>
+            <a href="pod-list.html" class="nav-link">Pod列表</a>
+            <a href="workload-list.html" class="nav-link">工作负载</a>
+            <a href="global-search.html" class="nav-link">全局搜索</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

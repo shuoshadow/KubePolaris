@@ -1,0 +1,28 @@
+# 服务器配置
+server:
+  port: 8080
+  mode: debug  # debug, release
+
+# 数据库配置 - 使用MySQL数据库
+database:
+  driver: mysql
+  dsn: ""
+  host: 172.28.117.30
+  port: 3307
+  username: root
+  password: 123456
+  database: k8s_management
+  charset: utf8mb4
+
+# JWT配置
+jwt:
+  secret: k8s-management-secret-key
+  expire_time: 24  # 小时
+
+# 日志配置
+log:
+  level: info  # debug, info, warn, error
+
+# Kubernetes配置
+k8s:
+  default_namespace: default

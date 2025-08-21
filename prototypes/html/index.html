@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s管理平台 - 原型展示</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">
+                <i class="fas fa-dharmachakra"></i>
+                <span>K8s管理平台</span>
+            </div>
+        </div>
+        
+        <div class="header-center">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="搜索Pod、Deployment、Service..." />
+                <span class="shortcut">⌘K</span>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <div class="notification">
+                <i class="fas fa-bell"></i>
+                <span class="badge">3</span>
+            </div>
+            <div class="user-menu">
+                <i class="fas fa-user-circle"></i>
+                <span>Admin</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="nav-menu">
+                <div class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>仪表盘</span>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item active">
+                        <i class="fas fa-server"></i>
+                        <span>集群管理</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="submenu">
+                        <div class="submenu-item current">
+                            <i class="fas fa-list"></i>
+                            <span>集群列表</span>
+                        </div>
+                        <div class="submenu-item">
+                            <i class="fas fa-plus"></i>
+                            <span>导入集群</span>
+                        </div>
+                        <div class="submenu-item">
+                            <i class="fas fa-chart-line"></i>
+                            <span>集群监控</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-desktop"></i>
+                        <span>节点管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-rocket"></i>
+                        <span>工作负载</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-cube"></i>
+                        <span>Pod管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-item">
+                    <i class="fas fa-search"></i>
+                    <span>全局搜索</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <i class="fas fa-home"></i>
+                <span>首页</span>
+                <i class="fas fa-chevron-right"></i>
+                <i class="fas fa-server"></i>
+                <span>集群管理</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>集群列表</span>
+            </div>
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>集群列表</h1>
+                    <p>管理和监控所有K8s集群</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        导入集群
+                    </button>
+                    <button class="btn btn-default">
+                        <i class="fas fa-sync"></i>
+                        刷新
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">3</div>
+                        <div class="stat-label">健康集群</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">1</div>
+                        <div class="stat-label">告警集群</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon info">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">12</div>
+                        <div class="stat-label">总节点数</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon primary">
+                        <i class="fas fa-cube"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">156</div>
+                        <div class="stat-label">运行Pod</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cluster List -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h3>集群列表</h3>
+                    <div class="filters">
+                        <select class="filter-select">
+                            <option>所有状态</option>
+                            <option>健康</option>
+                            <option>告警</option>
+                        </select>
+                        <input type="text" class="filter-input" placeholder="搜索集群..." />
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>集群名称</th>
+                                <th>状态</th>
+                                <th>版本</th>
+                                <th>节点数</th>
+                                <th>Pod数</th>
+                                <th>CPU使用率</th>
+                                <th>内存使用率</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="cluster-info">
+                                        <i class="fas fa-server cluster-icon"></i>
+                                        <div>
+                                            <div class="cluster-name">prod-k8s</div>
+                                            <div class="cluster-desc">生产环境集群</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge success">
+                                        <i class="fas fa-check-circle"></i>
+                                        健康
+                                    </span>
+                                </td>
+                                <td>v1.28.2</td>
+                                <td>5</td>
+                                <td>89</td>
+                                <td>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 65%"></div>
+                                        <span>65%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 72%"></div>
+                                        <span>72%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="监控">
+                                            <i class="fas fa-chart-line"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <tr>
+                                <td>
+                                    <div class="cluster-info">
+                                        <i class="fas fa-server cluster-icon"></i>
+                                        <div>
+                                            <div class="cluster-name">test-k8s</div>
+                                            <div class="cluster-desc">测试环境集群</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        告警
+                                    </span>
+                                </td>
+                                <td>v1.27.5</td>
+                                <td>3</td>
+                                <td>45</td>
+                                <td>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill warning" style="width: 85%"></div>
+                                        <span>85%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 58%"></div>
+                                        <span>58%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="监控">
+                                            <i class="fas fa-chart-line"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <tr>
+                                <td>
+                                    <div class="cluster-info">
+                                        <i class="fas fa-server cluster-icon"></i>
+                                        <div>
+                                            <div class="cluster-name">dev-k8s</div>
+                                            <div class="cluster-desc">开发环境集群</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge success">
+                                        <i class="fas fa-check-circle"></i>
+                                        健康
+                                    </span>
+                                </td>
+                                <td>v1.28.0</td>
+                                <td>2</td>
+                                <td>22</td>
+                                <td>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 35%"></div>
+                                        <span>35%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 42%"></div>
+                                        <span>42%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon" title="监控">
+                                            <i class="fas fa-chart-line"></i>
+                                        </button>
+                                        <button class="btn-icon" title="更多">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="prototype-nav">
+        <h3>原型页面导航</h3>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link active">集群列表</a>
+            <a href="cluster-detail.html" class="nav-link">集群详情</a>
+            <a href="cluster-import.html" class="nav-link">导入集群</a>
+            <a href="node-list.html" class="nav-link">节点列表</a>
+            <a href="node-detail.html" class="nav-link">节点详情</a>
+            <a href="node-operations.html" class="nav-link">节点操作</a>
+            <a href="pod-list.html" class="nav-link">Pod列表</a>
+            <a href="pod-detail.html" class="nav-link">Pod详情</a>
+            <a href="workload-list.html" class="nav-link">工作负载</a>
+            <a href="workload-detail.html" class="nav-link">工作负载详情</a>
+            <a href="global-search.html" class="nav-link">全局搜索</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

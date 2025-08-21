@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>导入集群 - K8s管理平台</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo">
+                <i class="fas fa-dharmachakra"></i>
+                <span>K8s管理平台</span>
+            </div>
+        </div>
+        
+        <div class="header-center">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="搜索Pod、Deployment、Service..." />
+                <span class="shortcut">⌘K</span>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <div class="notification">
+                <i class="fas fa-bell"></i>
+                <span class="badge">3</span>
+            </div>
+            <div class="user-menu">
+                <i class="fas fa-user-circle"></i>
+                <span>Admin</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="nav-menu">
+                <div class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>仪表盘</span>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item active">
+                        <i class="fas fa-server"></i>
+                        <span>集群管理</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="submenu">
+                        <div class="submenu-item">
+                            <i class="fas fa-list"></i>
+                            <span>集群列表</span>
+                        </div>
+                        <div class="submenu-item current">
+                            <i class="fas fa-plus"></i>
+                            <span>导入集群</span>
+                        </div>
+                        <div class="submenu-item">
+                            <i class="fas fa-chart-line"></i>
+                            <span>集群监控</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-desktop"></i>
+                        <span>节点管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-rocket"></i>
+                        <span>工作负载</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-group">
+                    <div class="menu-item">
+                        <i class="fas fa-cube"></i>
+                        <span>Pod管理</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                
+                <div class="menu-item">
+                    <i class="fas fa-search"></i>
+                    <span>全局搜索</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <i class="fas fa-home"></i>
+                <span>首页</span>
+                <i class="fas fa-chevron-right"></i>
+                <i class="fas fa-server"></i>
+                <span>集群管理</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>导入集群</span>
+            </div>
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>导入K8s集群</h1>
+                    <p>通过kubeconfig文件或连接信息导入现有的Kubernetes集群</p>
+                </div>
+            </div>
+
+            <!-- Import Methods -->
+            <div class="import-methods">
+                <div class="method-tabs">
+                    <button class="method-tab active" data-method="kubeconfig">
+                        <i class="fas fa-file-code"></i>
+                        <span>Kubeconfig文件</span>
+                    </button>
+                    <button class="method-tab" data-method="manual">
+                        <i class="fas fa-cog"></i>
+                        <span>手动配置</span>
+                    </button>
+                    <button class="method-tab" data-method="cloud">
+                        <i class="fas fa-cloud"></i>
+                        <span>云服务商</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Import Forms -->
+            <div class="import-forms">
+                <!-- Kubeconfig Method -->
+                <div class="import-form active" id="kubeconfig-form">
+                    <div class="content-card">
+                        <h3>通过Kubeconfig文件导入</h3>
+                        <p class="form-description">
+                            上传或粘贴您的kubeconfig文件内容，系统将自动解析集群连接信息
+                        </p>
+                        
+                        <div class="form-section">
+                            <div class="upload-methods">
+                                <div class="upload-method active" data-upload="file">
+                                    <i class="fas fa-upload"></i>
+                                    <span>上传文件</span>
+                                </div>
+                                <div class="upload-method" data-upload="paste">
+                                    <i class="fas fa-paste"></i>
+                                    <span>粘贴内容</span>
+                                </div>
+                            </div>
+                            
+                            <div class="upload-area" id="file-upload">
+                                <div class="upload-zone">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <h4>拖拽文件到此处或点击上传</h4>
+                                    <p>支持 .yaml, .yml, .config 格式文件</p>
+                                    <button class="btn btn-primary">
+                                        <i class="fas fa-folder-open"></i>
+                                        选择文件
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="upload-area" id="paste-upload" style="display: none;">
+                                <div class="paste-zone">
+                                    <label for="kubeconfig-content">Kubeconfig内容:</label>
+                                    <textarea 
+                                        id="kubeconfig-content" 
+                                        placeholder="请粘贴您的kubeconfig文件内容..."
+                                        rows="15"
+                                    ></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>集群基本信息</h4>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="cluster-name">集群名称 *</label>
+                                    <input type="text" id="cluster-name" placeholder="输入集群名称" required />
+                                </div>
+                                <div class="form-group">
+                                    <label for="cluster-description">集群描述</label>
+                                    <input type="text" id="cluster-description" placeholder="输入集群描述" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="cluster-environment">环境标签</label>
+                                    <select id="cluster-environment">
+                                        <option value="">选择环境</option>
+                                        <option value="production">生产环境</option>
+                                        <option value="staging">预发布环境</option>
+                                        <option value="development">开发环境</option>
+                                        <option value="testing">测试环境</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cluster-region">地域</label>
+                                    <input type="text" id="cluster-region" placeholder="如: us-west-1" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>高级选项</h4>
+                            <div class="form-options">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="auto-sync" checked />
+                                    <span>启用自动同步</span>
+                                    <small>定期同步集群状态和资源信息</small>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enable-monitoring" checked />
+                                    <span>启用监控</span>
+                                    <small>收集集群和节点的监控指标</small>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enable-logging" />
+                                    <span>启用日志收集</span>
+                                    <small>收集Pod和容器日志</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-default">
+                                <i class="fas fa-times"></i>
+                                取消
+                            </button>
+                            <button class="btn btn-secondary">
+                                <i class="fas fa-check"></i>
+                                测试连接
+                            </button>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-plus"></i>
+                                导入集群
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Configuration Method -->
+                <div class="import-form" id="manual-form">
+                    <div class="content-card">
+                        <h3>手动配置集群连接</h3>
+                        <p class="form-description">
+                            手动输入集群连接信息和认证凭据
+                        </p>
+                        
+                        <div class="form-section">
+                            <h4>连接信息</h4>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="api-server">API Server地址 *</label>
+                                    <input type="url" id="api-server" placeholder="https://k8s-api.example.com:6443" required />
+                                </div>
+                                <div class="form-group">
+                                    <label for="cluster-ca">集群CA证书</label>
+                                    <textarea id="cluster-ca" placeholder="-----BEGIN CERTIFICATE-----" rows="5"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>认证方式</h4>
+                            <div class="auth-methods">
+                                <label class="radio-label">
+                                    <input type="radio" name="auth-method" value="token" checked />
+                                    <span>Service Account Token</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="auth-method" value="cert" />
+                                    <span>客户端证书</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="auth-method" value="basic" />
+                                    <span>用户名密码</span>
+                                </label>
+                            </div>
+                            
+                            <div class="auth-form" id="token-auth">
+                                <div class="form-group">
+                                    <label for="service-token">Service Account Token *</label>
+                                    <textarea id="service-token" placeholder="输入Token..." rows="3" required></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="auth-form" id="cert-auth" style="display: none;">
+                                <div class="form-group">
+                                    <label for="client-cert">客户端证书</label>
+                                    <textarea id="client-cert" placeholder="-----BEGIN CERTIFICATE-----" rows="5"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="client-key">客户端私钥</label>
+                                    <textarea id="client-key" placeholder="-----BEGIN PRIVATE KEY-----" rows="5"></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="auth-form" id="basic-auth" style="display: none;">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="username">用户名</label>
+                                        <input type="text" id="username" placeholder="输入用户名" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="password">密码</label>
+                                        <input type="password" id="password" placeholder="输入密码" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>集群信息</h4>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="manual-cluster-name">集群名称 *</label>
+                                    <input type="text" id="manual-cluster-name" placeholder="输入集群名称" required />
+                                </div>
+                                <div class="form-group">
+                                    <label for="manual-cluster-description">集群描述</label>
+                                    <input type="text" id="manual-cluster-description" placeholder="输入集群描述" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-default">
+                                <i class="fas fa-times"></i>
+                                取消
+                            </button>
+                            <button class="btn btn-secondary">
+                                <i class="fas fa-check"></i>
+                                测试连接
+                            </button>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-plus"></i>
+                                导入集群
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cloud Provider Method -->
+                <div class="import-form" id="cloud-form">
+                    <div class="content-card">
+                        <h3>从云服务商导入</h3>
+                        <p class="form-description">
+                            选择云服务商并配置相应的访问凭据
+                        </p>
+                        
+                        <div class="form-section">
+                            <h4>选择云服务商</h4>
+                            <div class="cloud-providers">
+                                <div class="provider-card active" data-provider="aws">
+                                    <i class="fab fa-aws"></i>
+                                    <h5>Amazon EKS</h5>
+                                    <p>Amazon Elastic Kubernetes Service</p>
+                                </div>
+                                <div class="provider-card" data-provider="azure">
+                                    <i class="fab fa-microsoft"></i>
+                                    <h5>Azure AKS</h5>
+                                    <p>Azure Kubernetes Service</p>
+                                </div>
+                                <div class="provider-card" data-provider="gcp">
+                                    <i class="fab fa-google"></i>
+                                    <h5>Google GKE</h5>
+                                    <p>Google Kubernetes Engine</p>
+                                </div>
+                                <div class="provider-card" data-provider="tencent">
+                                    <i class="fas fa-cloud"></i>
+                                    <h5>腾讯云TKE</h5>
+                                    <p>腾讯云容器服务</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="provider-config" id="aws-config">
+                            <div class="form-section">
+                                <h4>AWS凭据配置</h4>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="aws-access-key">Access Key ID *</label>
+                                        <input type="text" id="aws-access-key" placeholder="AKIA..." required />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="aws-secret-key">Secret Access Key *</label>
+                                        <input type="password" id="aws-secret-key" placeholder="输入Secret Key" required />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="aws-region">AWS区域 *</label>
+                                        <select id="aws-region" required>
+                                            <option value="">选择区域</option>
+                                            <option value="us-east-1">US East (N. Virginia)</option>
+                                            <option value="us-west-2">US West (Oregon)</option>
+                                            <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                                            <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="eks-cluster-name">EKS集群名称 *</label>
+                                        <input type="text" id="eks-cluster-name" placeholder="输入EKS集群名称" required />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-default">
+                                <i class="fas fa-times"></i>
+                                取消
+                            </button>
+                            <button class="btn btn-secondary">
+                                <i class="fas fa-search"></i>
+                                发现集群
+                            </button>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-plus"></i>
+                                导入集群
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import Progress -->
+            <div class="import-progress" id="import-progress" style="display: none;">
+                <div class="content-card">
+                    <h3>正在导入集群...</h3>
+                    <div class="progress-steps">
+                        <div class="progress-step completed">
+                            <div class="step-icon">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="step-content">
+                                <h4>验证连接</h4>
+                                <p>连接到Kubernetes API服务器</p>
+                            </div>
+                        </div>
+                        <div class="progress-step active">
+                            <div class="step-icon">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                            <div class="step-content">
+                                <h4>获取集群信息</h4>
+                                <p>正在获取节点和命名空间信息...</p>
+                            </div>
+                        </div>
+                        <div class="progress-step">
+                            <div class="step-icon">
+                                <i class="fas fa-circle"></i>
+                            </div>
+                            <div class="step-content">
+                                <h4>同步资源</h4>
+                                <p>同步工作负载和服务信息</p>
+                            </div>
+                        </div>
+                        <div class="progress-step">
+                            <div class="step-icon">
+                                <i class="fas fa-circle"></i>
+                            </div>
+                            <div class="step-content">
+                                <h4>完成导入</h4>
+                                <p>集群导入完成</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import Success -->
+            <div class="import-result success" id="import-success" style="display: none;">
+                <div class="content-card">
+                    <div class="result-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3>集群导入成功！</h3>
+                    <p>集群 "production-k8s" 已成功导入到平台中</p>
+                    
+                    <div class="cluster-summary">
+                        <div class="summary-item">
+                            <span class="summary-label">节点数量:</span>
+                            <span class="summary-value">5个</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">命名空间:</span>
+                            <span class="summary-value">12个</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">工作负载:</span>
+                            <span class="summary-value">28个</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Pod数量:</span>
+                            <span class="summary-value">156个</span>
+                        </div>
+                    </div>
+                    
+                    <div class="result-actions">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-eye"></i>
+                            查看集群详情
+                        </button>
+                        <button class="btn btn-default">
+                            <i class="fas fa-list"></i>
+                            返回集群列表
+                        </button>
+                        <button class="btn btn-default">
+                            <i class="fas fa-plus"></i>
+                            继续导入
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="prototype-nav">
+        <h3>原型页面导航</h3>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">集群列表</a>
+            <a href="cluster-detail.html" class="nav-link">集群详情</a>
+            <a href="cluster-import.html" class="nav-link active">导入集群</a>
+            <a href="node-list.html" class="nav-link">节点列表</a>
+            <a href="node-detail.html" class="nav-link">节点详情</a>
+            <a href="pod-list.html" class="nav-link">Pod列表</a>
+            <a href="pod-detail.html" class="nav-link">Pod详情</a>
+            <a href="workload-list.html" class="nav-link">工作负载</a>
+            <a href="workload-detail.html" class="nav-link">工作负载详情</a>
+            <a href="global-search.html" class="nav-link">全局搜索</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333333;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f7fa;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* 腾讯设计语言 - 全局样式 */
+.ant-layout {
+  background: #f5f7fa;
+}
+
+.ant-layout-header {
+  background: #ffffff;
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid #e8eaec;
+  padding: 0;
+  height: 60px;
+  line-height: 60px;
+}
+
+.ant-layout-sider {
+  background: #ffffff;
+  box-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.06);
+  border-right: 1px solid #e8eaec;
+}
+
+.ant-layout-content {
+  background: #f5f7fa;
+  min-height: calc(100vh - 60px);
+}
+
+/* 腾讯风格卡片 */
+.ant-card {
+  border-radius: 12px;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.08);
+  border: 1px solid #e8eaec;
+  background: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.ant-card:hover {
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.12);
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #e8eaec;
+  background: #ffffff;
+  border-radius: 12px 12px 0 0;
+}
+
+.ant-card-head-title {
+  color: #333333;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* 腾讯风格表格 */
+.ant-table {
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ant-table-thead > tr > th {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e8eaec;
+  font-weight: 600;
+  color: #333333;
+  font-size: 14px;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f0f1f2;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: #f8f9fa;
+}
+
+/* 腾讯风格按钮 */
+.ant-btn-primary {
+  background: #006eff;
+  border-color: #006eff;
+  border-radius: 8px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px 0 rgba(0, 110, 255, 0.3);
+}
+
+.ant-btn-primary:hover {
+  background: #1a7aff;
+  border-color: #1a7aff;
+  box-shadow: 0 4px 8px 0 rgba(0, 110, 255, 0.4);
+}
+
+.ant-btn {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.ant-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* 腾讯风格菜单 */
+.ant-menu {
+  background: #ffffff;
+  border-right: none;
+}
+
+/* 一级菜单项样式 - 添加背景色 */
+.ant-menu-item {
+  margin: 4px 12px;
+  border-radius: 8px;
+  color: #333333;
+  font-weight: 500;
+  background: #f8f9fa !important;
+  border: 1px solid #e8eaec;
+}
+
+.ant-menu-item-selected {
+  background: linear-gradient(135deg, #006eff 0%, #1a7aff 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #006eff;
+}
+
+.ant-menu-item:hover {
+  background: #f0f6ff !important;
+  color: #006eff !important;
+  border: 1px solid #006eff;
+}
+
+.ant-menu-item-selected:hover {
+  background: linear-gradient(135deg, #006eff 0%, #1a7aff 100%) !important;
+  color: #ffffff !important;
+}
+
+/* 子菜单标题样式 - 添加背景色 */
+.ant-menu-submenu-title {
+  margin: 4px 12px;
+  border-radius: 8px;
+  color: #333333;
+  font-weight: 500;
+  background: #f8f9fa !important;
+  border: 1px solid #e8eaec;
+}
+
+.ant-menu-submenu-title:hover {
+  background: #f0f6ff !important;
+  color: #006eff !important;
+  border: 1px solid #006eff;
+}
+
+.ant-menu-submenu-open > .ant-menu-submenu-title {
+  background: #f0f6ff !important;
+  color: #006eff !important;
+  border: 1px solid #006eff;
+}
+
+/* 子菜单容器样式 - 修复二级目录背景 */
+.ant-menu-sub {
+  background: #ffffff !important;
+  margin: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid #e8eaec;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* 子菜单项样式 */
+.ant-menu-sub .ant-menu-item {
+  margin: 2px 8px;
+  background: #ffffff !important;
+  border: none;
+  color: #666666;
+}
+
+.ant-menu-sub .ant-menu-item:hover {
+  background: #f0f6ff !important;
+  color: #006eff !important;
+  border: none;
+}
+
+.ant-menu-sub .ant-menu-item-selected {
+  background: #e6f3ff !important;
+  color: #006eff !important;
+  border: none;
+}
+
+.ant-menu-sub .ant-menu-item-selected:hover {
+  background: #e6f3ff !important;
+  color: #006eff !important;
+}
+
+/* 菜单图标样式 */
+.ant-menu-item .anticon,
+.ant-menu-submenu-title .anticon {
+  font-size: 16px;
+  margin-right: 8px;
+}
+
+/* 腾讯风格输入框 */
+.ant-input {
+  border-radius: 8px;
+  border: 1px solid #e8eaec;
+  transition: all 0.3s ease;
+}
+
+.ant-input:focus {
+  border-color: #006eff;
+  box-shadow: 0 0 0 2px rgba(0, 110, 255, 0.1);
+}
+
+.ant-select-selector {
+  border-radius: 8px !important;
+  border: 1px solid #e8eaec !important;
+}
+
+.ant-select-focused .ant-select-selector {
+  border-color: #006eff !important;
+  box-shadow: 0 0 0 2px rgba(0, 110, 255, 0.1) !important;
+}
+
+/* 腾讯风格标签 */
+.ant-tag {
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border: none;
+}
+
+/* 腾讯风格进度条 */
+.ant-progress-line {
+  margin: 0;
+}
+
+.ant-progress-bg {
+  border-radius: 6px;
+}
+
+/* 腾讯风格统计卡片 */
+.ant-statistic {
+  text-align: center;
+}
+
+.ant-statistic-title {
+  margin-bottom: 8px;
+  color: #666666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ant-statistic-content {
+  color: #333333;
+  font-size: 28px;
+  font-weight: 700;
+}
