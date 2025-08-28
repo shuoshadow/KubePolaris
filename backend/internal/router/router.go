@@ -135,6 +135,7 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	{
 		kctl := handlers.NewKubectlTerminalHandler(clusterSvc)
 		ssh := handlers.NewSSHHandler()
+		podTerminal := handlers.NewPodTerminalHandler(clusterSvc)
 
 		// 集群级 kubectl 终端
 		ws.GET("/clusters/:clusterID/terminal", kctl.HandleKubectlTerminal)
@@ -142,9 +143,8 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		// 节点 SSH 终端
 		ws.GET("/ssh/terminal", ssh.SSHConnect)
 
-		// Pod 终端：建议使用 kubectl 而非 SSH
-		// 需要在 handlers 中提供相应方法（如 HandlePodTerminal）
-		ws.GET("/clusters/:clusterID/pods/:namespace/:name/terminal", ssh.SSHConnect)
+		// Pod 终端：使用 kubectl exec 连接到 Pod
+		ws.GET("/clusters/:clusterID/pods/:namespace/:name/terminal", podTerminal.HandlePodTerminal)
 	}
 
 	// TODO:
