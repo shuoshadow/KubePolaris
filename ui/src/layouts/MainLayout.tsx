@@ -417,7 +417,7 @@ const MainLayout: React.FC = () => {
               alt="Kubernetes" 
               style={{ width: '32px', height: '32px', marginRight: 8 }} 
             />
-            <span style={{ fontSize: '18px', fontWeight: 'bold' }}>K8s管理平台</span>
+            <span style={{ fontSize: '18px', fontWeight: 'bold' }}>KubePolaris</span>
           </div>
         </div>
 
