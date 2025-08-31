@@ -169,7 +169,7 @@ body {
 .ant-menu-submenu-open > .ant-menu-submenu-title {
   background: #f0f6ff !important;
   color: #006eff !important;
-  border: 1px solid #006eff;
+  border: 1px solid #e8eaec;
 }
 
 /* 子菜单容器样式 - 修复二级目录背景 */
