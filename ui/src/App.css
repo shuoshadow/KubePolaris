@@ -3,7 +3,7 @@
 /* 页面头部样式 */
 .page-header {
   background: #ffffff;
-  padding: 16px 24px;
+  padding: 4px 24px;
   margin-bottom: 16px;
   border-radius: 12px;
   box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.08);
@@ -12,8 +12,8 @@
 
 .page-header h1 {
   margin: 0;
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   color: #333333;
   line-height: 1.2;
 }
@@ -21,7 +21,7 @@
 .page-header p {
   margin: 8px 0 0 0;
   color: #666666;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 400;
 }
 
@@ -79,7 +79,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
-  padding: 16px 20px;
+  padding: 10px 20px;
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.08);
@@ -88,7 +88,7 @@
 
 .toolbar-left h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: #333333;
 }

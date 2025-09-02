@@ -27,7 +27,7 @@ const App: React.FC = () => {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/clusters" replace />} />
             <Route path="clusters" element={<ClusterList />} />
-            <Route path="clusters/:id" element={<ClusterDetail />} />
+            <Route path="clusters/:id/overview" element={<ClusterDetail />} />
             <Route path="clusters/import" element={<ClusterImport />} />
             <Route path="clusters/:clusterId/nodes" element={<NodeList />} />
             <Route path="clusters/:clusterId/nodes/:nodeName" element={<NodeDetail />} />

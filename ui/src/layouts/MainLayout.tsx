@@ -1,5 +1,5 @@
-import React from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
   Layout,
   Menu,
@@ -9,6 +9,8 @@ import {
   Dropdown,
   Avatar,
   Space,
+  Select,
+  Tag,
 } from 'antd';
 import {
   MenuFoldOutlined,
@@ -42,6 +44,7 @@ import {
 } from '@ant-design/icons';
 import type { MenuProps as AntMenuProps } from 'antd';
 import KubernetesIcon from '../components/KubernetesIcon';
+import type {  Cluster } from '../types';
 
 const { Header, Sider, Content } = Layout;
 
@@ -394,6 +397,40 @@ const MainLayout: React.FC = () => {
     }
   };
 
+  const ClusterSelector = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [clusters, setClusters] = useState<Cluster[]>([]);
+    const [currentCluster, setCurrentCluster] = useState(null);
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <ClusterOutlined style={{ color: '#1890ff' }} />
+        <span>当前集群：</span>
+        <Select
+          value={id}
+          style={{ minWidth: 200 }}
+          onChange={(clusterId) => {
+            // 保持当前子路由，只切换集群ID
+            const currentPath = location.pathname;
+            const newPath = currentPath.replace(/\/clusters\/[^\/]+/, `/clusters/${clusterId}`);
+            navigate(newPath);
+          }}
+        >
+          {clusters.map(cluster => (
+            <Select key={cluster.id} value={cluster.id.toString()}>
+              {cluster.name}
+            </Select>
+          ))}
+        </Select>
+        {/* <Tag color={currentCluster?.status === 'healthy' ? 'success' : 'error'}>
+          {currentCluster?.status === 'healthy' ? '健康' : '异常'}
+        </Tag> */}
+      </div>
+    );
+};
+
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header
@@ -446,16 +483,37 @@ const MainLayout: React.FC = () => {
         </Space>
       </Header>
 
-      <Layout style={{ marginTop: 52 }}>
+      {/* 新增：集群头部栏 */}
+      {isClusterDetailPage() && (
+        <div style={{
+          position: 'fixed',
+          top: '64px',
+          left: '0',
+          right: '0',
+          height: '48px',
+          background: '#f5f5f5',
+          borderBottom: '1px solid #d9d9d9',
+          zIndex: 999,
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 24px'
+        }}>
+          <ClusterSelector />  {/* 集群选择器组件 */}
+        </div>
+      )}
+
+      <Layout style={{ 
+        marginTop: isClusterDetailPage() ? 112 : 64  // 动态调整顶部间距
+        }}>
         <Sider
           width={192}
           style={{
             position: 'fixed',
             left: 0,
-            top: 52,
+            top: isClusterDetailPage() ? 112 : 52,
             bottom: 0,
             zIndex: 999,
-            background: '#fafafa',
+            background: '#ffffff',
             boxShadow: '2px 0 12px 0 rgba(0, 0, 0, 0.08)',
             borderRight: '1px solid #e0e0e0',
             overflow: 'hidden',

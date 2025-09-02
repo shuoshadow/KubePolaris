@@ -84,6 +84,7 @@ const ClusterList: React.FC = () => {
       key: 'name',
       width: 200,
       fixed: 'left' as const,
+      // 在集群名称列的 render 函数中
       render: (text, record) => (
         <div style={{ display: 'flex', alignItems: 'flex-start' }}>
           <ClusterOutlined style={{ marginRight: 8, color: '#1890ff', flexShrink: 0, marginTop: 2 }} />
@@ -92,8 +93,15 @@ const ClusterList: React.FC = () => {
               fontWeight: 'bold',
               whiteSpace: 'normal',
               wordBreak: 'break-all',
-              lineHeight: '1.4'
-            }}>
+              lineHeight: '1.4',
+              color: '#1890ff',        // 添加链接颜色
+              cursor: 'pointer',       // 添加手型光标
+              textDecoration: 'none'   // 可选：去掉下划线
+            }}
+            onClick={() => navigate(`/clusters/${record.id}/overview`)}  // 添加点击事件
+            // onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}  // 悬停效果
+            // onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+            >
               {text}
             </div>
             <div style={{ 
@@ -181,15 +189,15 @@ const ClusterList: React.FC = () => {
       fixed: 'right' as const,
       render: (_, record) => (
         <Space size="middle">
-          <Tooltip title="查看详情">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => navigate(`/clusters/${record.id}`)}
-            />
-          </Tooltip>
           <Tooltip title="监控">
             <Button type="text" icon={<BarChartOutlined />} />
+          </Tooltip>
+          <Tooltip title="kubectl终端">
+            <Button 
+              type="text" 
+              icon={<CodeOutlined />}
+              onClick={() => openTerminal(record)}  // 调用已有的终端功能
+            />
           </Tooltip>
           <Tooltip title="更多">
             <Button type="text" icon={<MoreOutlined />} />
@@ -236,59 +244,21 @@ const ClusterList: React.FC = () => {
       <div className="page-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1>集群列表</h1>
-            <p>管理和监控所有K8s集群</p>
+            <h1>集群管理</h1>
+            {/* // Todo 改为异常节点 */}
+            <div style={{ display: 'flex', gap: '36px' }}>
+              <span>异常集群/总数：<b>{unhealthyClusters}</b>/<b>{clusters.length}</b></span>
+              <span>异常节点/总数：<b>{unhealthyClusters}</b>/<b>{readyNodes}</b></span>
+            </div>
           </div>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
-              刷新
-            </Button>
+
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/clusters/import')}>
               导入集群
             </Button>
           </Space>
         </div>
       </div>
-
-      {/* 统计卡片 */}
-      <Row gutter={[20, 20]} className="stats-grid">
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="stats-card" style={{ background: 'linear-gradient(135deg, #00d4aa 0%, #00b894 100%)' }}>
-            <Statistic
-              title="健康集群"
-              value={healthyClusters}
-              prefix={<CheckCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="stats-card" style={{ background: 'linear-gradient(135deg, #ff9f43 0%, #ff7675 100%)' }}>
-            <Statistic
-              title="异常集群"
-              value={unhealthyClusters}
-              prefix={<ExclamationCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="stats-card" style={{ background: 'linear-gradient(135deg, #006eff 0%, #1a7aff 100%)' }}>
-            <Statistic
-              title="总节点数"
-              value={totalNodes}
-              prefix={<ClusterOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="stats-card" style={{ background: 'linear-gradient(135deg, #a55eea 0%, #8e44ad 100%)' }}>
-            <Statistic
-              title="就绪节点"
-              value={readyNodes}
-              prefix={<Badge status="processing" />}
-            />
-          </Card>
-        </Col>
-      </Row>
 
       {/* 集群列表 */}
       <div className="table-container">
@@ -297,17 +267,6 @@ const ClusterList: React.FC = () => {
             <h3>集群列表</h3>
           </div>
           <div className="toolbar-right">
-            <Select
-              placeholder="筛选状态"
-              style={{ width: 120 }}
-              allowClear
-              value={statusFilter}
-              onChange={setStatusFilter}
-            >
-              <Option value="healthy">健康</Option>
-              <Option value="unhealthy">异常</Option>
-              <Option value="unknown">未知</Option>
-            </Select>
             <Search
               placeholder="搜索集群..."
               style={{ width: 240 }}
@@ -315,6 +274,9 @@ const ClusterList: React.FC = () => {
               onChange={(e) => setSearchText(e.target.value)}
               allowClear
             />
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
+              刷新
+            </Button>
           </div>
         </div>
         
