@@ -6,8 +6,10 @@ import (
 
 	"kubepolaris/internal/config"
 	"kubepolaris/internal/handlers"
+	"kubepolaris/internal/k8s"
 	"kubepolaris/internal/middleware"
 	"kubepolaris/internal/services"
+	"kubepolaris/pkg/logger"
 )
 
 func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
@@ -39,6 +41,21 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 
 	// 统一的 Service 实例，避免重复创建
 	clusterSvc := services.NewClusterService(db)
+	// K8s Informer 管理器（方案C）
+	k8sMgr := k8s.NewClusterInformerManager()
+	// 预热所有已存在集群的 Informer（后台执行，不阻塞启动）
+	go func() {
+		clusters, err := clusterSvc.GetAllClusters()
+		if err != nil {
+			logger.Error("预热 informer 失败", "error", err)
+			return
+		}
+		for _, cl := range clusters {
+			if _, err := k8sMgr.EnsureForCluster(cl); err != nil {
+				logger.Error("初始化集群 informer 失败", "cluster", cl.Name, "error", err)
+			}
+		}
+	}()
 
 	// /api/v1
 	api := r.Group("/api/v1")
@@ -60,7 +77,7 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		// clusters 根分组
 		clusters := protected.Group("/clusters")
 		{
-			clusterHandler := handlers.NewClusterHandler(db, cfg)
+			clusterHandler := handlers.NewClusterHandler(db, cfg, k8sMgr)
 
 			// 静态路由优先
 			clusters.GET("/stats", clusterHandler.GetClusterStats)

@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"kubepolaris/internal/config"
+	"kubepolaris/internal/k8s"
 	"kubepolaris/internal/models"
 	"kubepolaris/internal/services"
 	"kubepolaris/pkg/logger"
@@ -22,20 +24,21 @@ type ClusterHandler struct {
 	db             *gorm.DB
 	cfg            *config.Config
 	clusterService *services.ClusterService
+	k8sMgr         *k8s.ClusterInformerManager
 }
 
 // NewClusterHandler 创建集群处理器
-func NewClusterHandler(db *gorm.DB, cfg *config.Config) *ClusterHandler {
+func NewClusterHandler(db *gorm.DB, cfg *config.Config, mgr *k8s.ClusterInformerManager) *ClusterHandler {
 	return &ClusterHandler{
 		db:             db,
 		cfg:            cfg,
 		clusterService: services.NewClusterService(db),
+		k8sMgr:         mgr,
 	}
 }
 
 // GetClusters 获取集群列表
 func (h *ClusterHandler) GetClusters(c *gin.Context) {
-	logger.Info("获取集群列表")
 
 	clusters, err := h.clusterService.GetAllClusters()
 	if err != nil {
@@ -376,7 +379,49 @@ func (h *ClusterHandler) GetClusterOverview(c *gin.Context) {
 		return
 	}
 
-	// 创建K8s客户端
+	// 优先使用 Informer 缓存（方案C）
+	// 确保本集群的 informer 已初始化并启动
+	if _, err := h.k8sMgr.EnsureForCluster(cluster); err == nil {
+		if snap, err := h.k8sMgr.GetOverviewSnapshot(c.Request.Context(), cluster.ID); err == nil {
+			overview := gin.H{
+				"code":    200,
+				"message": "获取成功",
+				"data": gin.H{
+					"cluster_id": fmt.Sprintf("%d", cluster.ID),
+					"nodes": gin.H{
+						"total":  snap.Nodes.Total,
+						"ready":  snap.Nodes.Ready,
+						"master": 1,
+						"worker": maxInt(snap.Nodes.Total-1, 0),
+					},
+					"pods": gin.H{
+						"total":     snap.Pods.Total,
+						"Running":   snap.Pods.Running,
+						"Pending":   snap.Pods.Pending,
+						"Failed":    snap.Pods.Failed,
+						"Succeeded": snap.Pods.Succeeded,
+						"Unknown":   snap.Pods.Unknown,
+					},
+					"namespaces": gin.H{
+						"total": snap.Namespaces,
+					},
+					"services": gin.H{
+						"total": snap.Services,
+					},
+					"deployments": gin.H{
+						"total": snap.Deploys,
+					},
+					"resource_usage": gin.H{
+						"cpu":    gin.H{"used": "2.5", "total": "8", "unit": "cores"},
+						"memory": gin.H{"used": "4.2", "total": "16", "unit": "GB"},
+					},
+				},
+			}
+			c.JSON(http.StatusOK, overview)
+			return
+		}
+	}
+	// 如果缓存尚未就绪或失败，则回退到现有逻辑（直接访问 API）
 	var k8sClient *services.K8sClient
 	if cluster.KubeconfigEnc != "" {
 		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
@@ -394,78 +439,113 @@ func (h *ClusterHandler) GetClusterOverview(c *gin.Context) {
 		return
 	}
 
-	// 获取节点信息
-	nodeCount, readyNodes := h.getClusterNodeInfo(cluster)
-
-	// 获取Pod信息
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	pods, err := k8sClient.GetClientset().CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	// 获取节点信息（复用已创建的 k8sClient）
+	nctx, ncancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer ncancel()
+	nodes, err := k8sClient.GetClientset().CoreV1().Nodes().List(nctx, metav1.ListOptions{})
 	if err != nil {
-		logger.Error("获取Pod列表失败", "error", err)
+		logger.Error("获取节点列表失败", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": "获取Pod列表失败: " + err.Error(),
+			"message": "获取节点列表失败: " + err.Error(),
 			"data":    nil,
 		})
 		return
 	}
-
-	// 统计Pod状态
-	podTotal := len(pods.Items)
-	podRunning := 0
-	podPending := 0
-	podFailed := 0
-	podSucceeded := 0
-	podUnknown := 0
-
-	for _, pod := range pods.Items {
-		switch pod.Status.Phase {
-		case "Running":
-			podRunning++
-		case "Pending":
-			podPending++
-		case "Failed":
-			podFailed++
-		case "Succeeded":
-			podSucceeded++
-		default:
-			podUnknown++
+	nodeCount := len(nodes.Items)
+	readyNodes := 0
+	for _, node := range nodes.Items {
+		for _, condition := range node.Status.Conditions {
+			if condition.Type == "Ready" && condition.Status == "True" {
+				readyNodes++
+				break
+			}
 		}
 	}
 
-	// 获取命名空间信息
-	var namespaceCount int
-	namespaces, err := k8sClient.GetClientset().CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		logger.Error("获取命名空间列表失败", "error", err)
-		// 命名空间获取失败不影响整体结果，设置为0
-		namespaceCount = 0
-	} else {
+	// 获取集群资源信息（并发执行）
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var (
+		podTotal, podRunning, podPending, podFailed, podSucceeded, podUnknown int
+		namespaceCount, serviceCount, deploymentCount                         int
+		podsErr                                                               error
+		wg                                                                    sync.WaitGroup
+	)
+
+	wg.Add(4)
+
+	// Pods（失败需中断返回500）
+	go func() {
+		defer wg.Done()
+		pods, err := k8sClient.GetClientset().CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+		if err != nil {
+			logger.Error("获取Pod列表失败", "error", err)
+			podsErr = err
+			return
+		}
+		podTotal = len(pods.Items)
+		for _, pod := range pods.Items {
+			switch pod.Status.Phase {
+			case "Running":
+				podRunning++
+			case "Pending":
+				podPending++
+			case "Failed":
+				podFailed++
+			case "Succeeded":
+				podSucceeded++
+			default:
+				podUnknown++
+			}
+		}
+	}()
+
+	// Namespaces（失败记0继续）
+	go func() {
+		defer wg.Done()
+		namespaces, err := k8sClient.GetClientset().CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			logger.Error("获取命名空间列表失败", "error", err)
+			namespaceCount = 0
+			return
+		}
 		namespaceCount = len(namespaces.Items)
-	}
+	}()
 
-	// 获取服务信息
-	var serviceCount int
-	services, err := k8sClient.GetClientset().CoreV1().Services("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		logger.Error("获取服务列表失败", "error", err)
-		// 服务获取失败不影响整体结果，设置为0
-		serviceCount = 0
-	} else {
-		serviceCount = len(services.Items)
-	}
+	// Services（失败记0继续）
+	go func() {
+		defer wg.Done()
+		svcList, err := k8sClient.GetClientset().CoreV1().Services("").List(ctx, metav1.ListOptions{})
+		if err != nil {
+			logger.Error("获取服务列表失败", "error", err)
+			serviceCount = 0
+			return
+		}
+		serviceCount = len(svcList.Items)
+	}()
 
-	// 获取部署信息
-	var deploymentCount int
-	deployments, err := k8sClient.GetClientset().AppsV1().Deployments("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		logger.Error("获取部署列表失败", "error", err)
-		// 部署获取失败不影响整体结果，设置为0
-		deploymentCount = 0
-	} else {
-		deploymentCount = len(deployments.Items)
+	// Deployments（失败记0继续）
+	go func() {
+		defer wg.Done()
+		deployList, err := k8sClient.GetClientset().AppsV1().Deployments("").List(ctx, metav1.ListOptions{})
+		if err != nil {
+			logger.Error("获取部署列表失败", "error", err)
+			deploymentCount = 0
+			return
+		}
+		deploymentCount = len(deployList.Items)
+	}()
+
+	wg.Wait()
+	if podsErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Pod列表失败: " + podsErr.Error(),
+			"data":    nil,
+		})
+		return
 	}
 
 	// 构建响应数据，使用前端需要的格式
@@ -724,4 +804,12 @@ func (h *ClusterHandler) getClusterNodeInfo(cluster *models.Cluster) (int, int) 
 	}
 
 	return nodeCount, readyNodes
+}
+
+// maxInt 返回较大的整数，避免出现负数（例如 worker = total - 1）
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
