@@ -181,6 +181,7 @@ const ClusterDetail: React.FC = () => {
                   {new Date(cluster.createdAt).toLocaleString()}
                 </Space>
               </Descriptions.Item>
+              <Descriptions.Item label="容器子网">todo cidr（可用/总IP数：1024/4096）</Descriptions.Item>
             </Descriptions>
           </Card>
 
@@ -190,102 +191,58 @@ const ClusterDetail: React.FC = () => {
             <Row gutter={[16, 16]}>
               {/* 节点概览 */}
               <Col xs={24} sm={24} md={12} lg={12} xl={12}>
-                <Card bordered={false} bodyStyle={{ padding: 16 }}>
-                  <Row align="middle" gutter={16}>
-                    <Col flex="120px">
-                      <Progress
-                        type="circle"
-                        percent={Math.min(100, Math.round(((clusterOverview?.nodes?.ready || 0) / (clusterOverview?.nodes?.total || 1)) * 100))}
-                        strokeColor="#52c41a"
-                        width={100}
-                        format={() => String(clusterOverview?.nodes?.total || 0)}
-                      />
+                  <Row gutter={[12, 12]}>
+                    <Col xs={24} sm={12}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/clusters/${id}/nodes`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/clusters/${id}/nodes`); }}
+                        style={{ background: 'linear-gradient(135deg,#20d6b5,#18b47b)', color: '#fff', borderRadius: 12, padding: '16px 20px', textAlign: 'center', cursor: 'pointer' }}>
+                        <div style={{ opacity: 0.9, marginBottom: 4 }}>总节点</div>
+                        <div style={{ fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                          <DesktopOutlined />
+                          {clusterOverview?.nodes?.total || 0}
+                        </div>
+                      </div>
                     </Col>
-                    <Col flex="auto">
-                      <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                        <Text strong>节点总数</Text>
-                        <Text type="secondary">运行中 {clusterOverview?.nodes?.ready || 0}</Text>
-                        <Button type="primary" size="small" onClick={() => navigate(`/clusters/${id}/nodes`)}>
-                          查看节点列表
-                        </Button>
-                      </Space>
+                    <Col xs={24} sm={12}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/clusters/${id}/pods`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/clusters/${id}/pods`); }}
+                        style={{ background: 'linear-gradient(135deg,#2d6bff,#1b74f9)', color: '#fff', borderRadius: 12, padding: '16px 20px', textAlign: 'center', cursor: 'pointer' }}>
+                        <div style={{ opacity: 0.9, marginBottom: 4 }}>Pod总数</div>
+                        <div style={{ fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                          <AppstoreOutlined />
+                          {clusterOverview?.pods?.total || 0}
+                        </div>
+                      </div>
                     </Col>
                   </Row>
-                </Card>
               </Col>
 
-              {/* 工作负载概览 */}
+              {/* 工作负载概览（仅总数，渐变数字卡） */}
               <Col xs={24} sm={24} md={12} lg={12} xl={12}>
-                <Card bordered={false} bodyStyle={{ padding: 16 }}>
-                  <Row align="middle" gutter={16}>
-                    <Col flex="120px">
-                      <Progress
-                        type="circle"
-                        percent={100}
-                        strokeColor="#52c41a"
-                        width={100}
-                        format={() => String(
-                          (clusterOverview?.deployments?.total || 0) +
-                          (clusterOverview?.statefulSets?.total || 0) +
-                          (clusterOverview?.daemonSets?.total || 0) +
-                          (clusterOverview?.jobs?.total || 0)
-                        )}
-                      />
-                    </Col>
-                    <Col flex="auto">
-                      <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                        <Text strong>工作负载总数</Text>
-                        <Text type="secondary">
-                          运行中 {
-                            (clusterOverview?.deployments?.total || 0) +
-                            (clusterOverview?.statefulSets?.total || 0) +
-                            (clusterOverview?.daemonSets?.total || 0) +
-                            (clusterOverview?.jobs?.total || 0)
-                          }
-                        </Text>
-                        <Button type="primary" size="small" onClick={() => navigate(`/clusters/${id}/workloads`)}>
-                          查看工作负载列表
-                        </Button>
-                      </Space>
-                    </Col>
-                  </Row>
-
-                  {/* 工作负载类型分类 */}
-                  <Row gutter={[8, 8]} style={{ marginTop: 12 }}>
-                    <Col xs={12} sm={12} md={12} lg={12}>
-                      <Card size="small" bordered>
-                        <Space direction="vertical" size={4}>
-                          <Text type="secondary">Deployment</Text>
-                          <Text strong>{clusterOverview?.deployments?.total || 0}</Text>
-                        </Space>
-                      </Card>
-                    </Col>
-                    <Col xs={12} sm={12} md={12} lg={12}>
-                      <Card size="small" bordered>
-                        <Space direction="vertical" size={4}>
-                          <Text type="secondary">StatefulSet</Text>
-                          <Text strong>{clusterOverview?.statefulSets?.total || 0}</Text>
-                        </Space>
-                      </Card>
-                    </Col>
-                    <Col xs={12} sm={12} md={12} lg={12}>
-                      <Card size="small" bordered>
-                        <Space direction="vertical" size={4}>
-                          <Text type="secondary">DaemonSet</Text>
-                          <Text strong>{clusterOverview?.daemonSets?.total || 0}</Text>
-                        </Space>
-                      </Card>
-                    </Col>
-                    <Col xs={12} sm={12} md={12} lg={12}>
-                      <Card size="small" bordered>
-                        <Space direction="vertical" size={4}>
-                          <Text type="secondary">Job</Text>
-                          <Text strong>{clusterOverview?.jobs?.total || 0}</Text>
-                        </Space>
-                      </Card>
-                    </Col>
-                  </Row>
-                </Card>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/clusters/${id}/workloads`)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/clusters/${id}/workloads`); }}
+                  style={{ background: 'linear-gradient(135deg,#6a11cb,#2575fc)', color: '#fff', borderRadius: 12, padding: '16px 20px', textAlign: 'center', cursor: 'pointer' }}>
+                  <div style={{ opacity: 0.9, marginBottom: 4 }}>工作负载总数</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <AppstoreOutlined />
+                    {
+                      (clusterOverview?.deployments || 0) +
+                      (clusterOverview?.statefulsets || 0) +
+                      (clusterOverview?.daemonsets || 0) +
+                      (clusterOverview?.jobs || 0) +
+                      (clusterOverview?.rollouts || 0)
+                    }
+                  </div>
+                </div>
               </Col>
             </Row>
           </Card>
