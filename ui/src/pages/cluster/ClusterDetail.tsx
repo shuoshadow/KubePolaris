@@ -17,6 +17,7 @@ import {
   Badge,
   Tooltip,
   message,
+  Input,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -36,7 +37,7 @@ import {
 import KubectlTerminal from '../../components/KubectlTerminal';
 import MonitoringCharts from '../../components/MonitoringCharts';
 import type { ColumnsType } from 'antd/es/table';
-import type { Cluster, Node, Pod } from '../../types';
+import type { Cluster, Node, Pod, K8sEvent } from '../../types';
 import { clusterService } from '../../services/clusterService';
 
 const { Title, Text } = Typography;
@@ -49,7 +50,7 @@ const ClusterDetail: React.FC = () => {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [pods, setPods] = useState<Pod[]>([]);
   const [clusterOverview, setClusterOverview] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('events');
   const [loadingNodes, setLoadingNodes] = useState(false);
   const [loadingPods, setLoadingPods] = useState(false);
   const [loadingOverview, setLoadingOverview] = useState(false);
@@ -111,6 +112,104 @@ const ClusterDetail: React.FC = () => {
   };
 
 
+  // 事件相关
+  const [events, setEvents] = useState<K8sEvent[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [eventSearch, setEventSearch] = useState('');
+
+  const fetchClusterEvents = async (keyword?: string) => {
+    if (!id) return;
+    setLoadingEvents(true);
+    try {
+      const response = await clusterService.getClusterEvents(id, keyword ? { search: keyword } : undefined);
+      setEvents(response.data || []);
+    } catch (error) {
+      message.error('获取K8s事件失败');
+      console.error('获取K8s事件失败:', error);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
+
+  const handleSearchEvents = (value: string) => {
+    setEventSearch(value);
+    fetchClusterEvents(value);
+  };
+
+  const exportEventsCSV = () => {
+    if (!events.length) return;
+    const header = ['对象','类型','事件名称','K8s事件','发生时间'];
+    const rows = events.map((e) => {
+      const obj = `${e.involvedObject.kind} ${e.involvedObject.namespace ? e.involvedObject.namespace + '/' : ''}${e.involvedObject.name}`;
+      const typeText = e.type === 'Normal' ? '正常' : e.type === 'Warning' ? '告警' : (e.type || '');
+      const reason = e.reason || '';
+      const messageText = (e.message || '');
+      const t = e.lastTimestamp || e.eventTime || e.metadata?.creationTimestamp || e.firstTimestamp || '';
+      const time = t ? new Date(t).toLocaleString() : '';
+      return [obj, typeText, reason, messageText, time].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+    });
+    const csv = [header.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cluster-${id}-events-${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const eventColumns: ColumnsType<K8sEvent> = [
+    {
+      title: '对象',
+      dataIndex: 'involvedObject',
+      key: 'object',
+      render: (obj: K8sEvent['involvedObject']) => (
+        <div>
+          <div>{obj.kind}</div>
+          <div style={{ color: '#999' }}>{obj.namespace ? `${obj.namespace}/` : ''}{obj.name}</div>
+        </div>
+      ),
+    },
+    {
+      title: '类型',
+      dataIndex: 'type',
+      key: 'type',
+      render: (type: string) => (
+        <Badge status={type === 'Normal' ? 'success' : 'warning'} text={type === 'Normal' ? '正常' : '告警'} />
+      ),
+      filters: [
+        { text: '正常', value: 'Normal' },
+        { text: '告警', value: 'Warning' },
+      ],
+      onFilter: (value, record) => record.type === value,
+    },
+    {
+      title: '事件名称',
+      dataIndex: 'reason',
+      key: 'reason',
+    },
+    {
+      title: 'K8s事件',
+      dataIndex: 'message',
+      key: 'message',
+    },
+    {
+      title: '发生时间',
+      dataIndex: 'lastTimestamp',
+      key: 'time',
+      render: (_: any, ev: K8sEvent) => {
+        const t = ev.lastTimestamp || ev.eventTime || ev.metadata?.creationTimestamp || ev.firstTimestamp;
+        return t ? new Date(t).toLocaleString() : '-';
+      },
+      sorter: (a, b) => {
+        const ta = Date.parse(a.lastTimestamp || a.eventTime || a.metadata?.creationTimestamp || a.firstTimestamp || '0');
+        const tb = Date.parse(b.lastTimestamp || b.eventTime || b.metadata?.creationTimestamp || b.firstTimestamp || '0');
+        return ta - tb;
+      },
+      defaultSortOrder: 'descend' as const,
+    },
+  ];
+
   // 使用监控图表组件
   const ClusterMonitoring = () => (
     <MonitoringCharts clusterId={id} />
@@ -130,14 +229,34 @@ const ClusterDetail: React.FC = () => {
     // },
     {
       key: 'events',
-      label: '事件',
+      label: 'K8S 事件',
       children: (
-        <Alert
-          message="集群事件"
-          description="这里将显示集群的最新事件和日志信息"
-          type="info"
-          showIcon
-        />
+        <div>
+          <Alert
+            message="K8S 事件是集群内资源事件，包含负载、服务、存储等。事件保存时间较短，请及时导出留存。"
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+          />
+          <Space style={{ marginBottom: 12 }} wrap>
+            <Input.Search
+              allowClear
+              placeholder="选择属性筛选，或输入关键字搜索"
+              onSearch={handleSearchEvents}
+              enterButton="搜索"
+              loading={loadingEvents}
+              style={{ width: 420 }}
+            />
+            <Button onClick={exportEventsCSV} disabled={!events.length}>导出</Button>
+          </Space>
+          <Table
+            rowKey={(e) => (e as K8sEvent).metadata?.uid || `${(e as K8sEvent).involvedObject.kind}/${(e as K8sEvent).involvedObject.namespace || 'default'}/${(e as K8sEvent).involvedObject.name}/${(e as K8sEvent).reason}/${(e as K8sEvent).lastTimestamp || (e as K8sEvent).eventTime || (e as K8sEvent).metadata?.creationTimestamp || ''}`}
+            columns={eventColumns as any}
+            dataSource={events}
+            loading={loadingEvents}
+            pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 条` }}
+          />
+        </div>
       ),
     },
   ];
@@ -145,6 +264,12 @@ const ClusterDetail: React.FC = () => {
   useEffect(() => {
     refreshAllData();
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab === 'events') {
+      fetchClusterEvents(eventSearch);
+    }
+  }, [activeTab, id]);
 
   if (!cluster && !loading) {
     return (
@@ -186,9 +311,7 @@ const ClusterDetail: React.FC = () => {
           </Card>
 
           {/* 统计卡片 */}
-          <Card style={{ marginBottom: 24 }} bodyStyle={{ padding: 16 }}>
-            <Title level={4} style={{ marginBottom: 16 }}>资源概览</Title>
-            <Row gutter={[16, 16]}>
+            <Row gutter={[20, 20]} className="stats-grid">
               {/* 节点概览 */}
                      <Col xs={24} sm={12} lg={6}>
                       <div
@@ -257,7 +380,6 @@ const ClusterDetail: React.FC = () => {
                 </div>
               </Col>
             </Row>
-          </Card>
 
           {/* 详细信息标签页 */}
           <Card>

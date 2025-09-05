@@ -168,3 +168,31 @@ export interface MetricSeries {
   name: string;
   data: MetricData[];
 }
+
+ // K8s 事件类型
+export interface K8sEventInvolvedObject {
+  kind: string;
+  name: string;
+  namespace?: string;
+  uid?: string;
+  apiVersion?: string;
+  fieldPath?: string;
+}
+
+export interface K8sEvent {
+  metadata?: {
+    uid?: string;
+    name?: string;
+    namespace?: string;
+    creationTimestamp?: string;
+  };
+  involvedObject: K8sEventInvolvedObject;
+  type: 'Normal' | 'Warning' | string;
+  reason: string;
+  message: string;
+  source?: { component?: string; host?: string };
+  firstTimestamp?: string;
+  lastTimestamp?: string;
+  eventTime?: string;
+  count?: number;
+}

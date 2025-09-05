@@ -1,5 +1,5 @@
 import { request } from '../utils/api';
-import type { Cluster, ClusterStats, PaginatedResponse } from '../types';
+import type { Cluster, ClusterStats, PaginatedResponse, K8sEvent } from '../types';
 
 export const clusterService = {
   // 获取集群列表
@@ -59,5 +59,10 @@ export const clusterService = {
     caCert?: string;
   }) => {
     return request.post('/clusters/test-connection', data);
+  },
+
+  // 获取集群K8s事件
+  getClusterEvents: (clusterId: string, params?: { search?: string; type?: string }) => {
+    return request.get<K8sEvent[]>(`/clusters/${clusterId}/events`, { params });
   },
 };

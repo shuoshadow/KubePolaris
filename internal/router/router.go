@@ -92,6 +92,7 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 				cluster.GET("/status", clusterHandler.GetClusterStatus)
 				cluster.GET("/overview", clusterHandler.GetClusterOverview)
 				cluster.GET("/metrics", clusterHandler.GetClusterMetrics)
+				cluster.GET("/events", clusterHandler.GetClusterEvents)
 				cluster.DELETE("", clusterHandler.DeleteCluster)
 
 				// nodes 子分组

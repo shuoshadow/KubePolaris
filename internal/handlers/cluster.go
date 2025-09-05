@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"kubepolaris/internal/config"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -390,6 +392,130 @@ func (h *ClusterHandler) GetClusterOverview(c *gin.Context) {
 			return
 		}
 	}
+}
+
+/*
+*
+GetClusterEvents 获取集群 K8s 事件列表
+GET /api/v1/clusters/:clusterID/events?search=xxx&type=Normal|Warning
+返回前端定义的 K8sEvent 数组（不分页）
+*/
+func (h *ClusterHandler) GetClusterEvents(c *gin.Context) {
+	idStr := c.Param("clusterID")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "无效的集群ID", "data": nil})
+		return
+	}
+
+	cluster, err := h.clusterService.GetCluster(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "集群不存在", "data": nil})
+		return
+	}
+
+	// 构建 K8s 客户端并直接调用 API 获取事件
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		logger.Error("创建K8s客户端失败", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "创建K8s客户端失败: " + err.Error(), "data": nil})
+		return
+	}
+
+	cs := k8sClient.GetClientset()
+
+	// 拉取所有命名空间的 core/v1 Event
+	evList, err := cs.CoreV1().Events("").List(c.Request.Context(), metav1.ListOptions{})
+	if err != nil {
+		logger.Error("获取K8s事件失败", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "获取K8s事件失败: " + err.Error(), "data": nil})
+		return
+	}
+
+	search := strings.TrimSpace(c.Query("search"))
+	ftype := strings.TrimSpace(c.Query("type"))
+
+	out := make([]gin.H, 0, len(evList.Items))
+	for _, e := range evList.Items {
+		// 类型过滤
+		if ftype != "" && !strings.EqualFold(e.Type, ftype) {
+			continue
+		}
+		// 关键字过滤（对象kind/name/ns、reason、message）
+		if search != "" {
+			s := strings.ToLower(search)
+			if !(strings.Contains(strings.ToLower(e.InvolvedObject.Kind), s) ||
+				strings.Contains(strings.ToLower(e.InvolvedObject.Name), s) ||
+				strings.Contains(strings.ToLower(e.InvolvedObject.Namespace), s) ||
+				strings.Contains(strings.ToLower(e.Reason), s) ||
+				strings.Contains(strings.ToLower(e.Message), s)) {
+				continue
+			}
+		}
+
+		// 发生时间优先级：lastTimestamp > eventTime > firstTimestamp > metadata.creationTimestamp
+		var lastTS string
+		if !e.LastTimestamp.IsZero() {
+			lastTS = e.LastTimestamp.Time.UTC().Format(time.RFC3339)
+		} else if !e.EventTime.IsZero() {
+			lastTS = e.EventTime.Time.UTC().Format(time.RFC3339)
+		} else if !e.FirstTimestamp.IsZero() {
+			lastTS = e.FirstTimestamp.Time.UTC().Format(time.RFC3339)
+		} else if !e.ObjectMeta.CreationTimestamp.IsZero() {
+			lastTS = e.ObjectMeta.CreationTimestamp.Time.UTC().Format(time.RFC3339)
+		}
+
+		out = append(out, gin.H{
+			"metadata": gin.H{
+				"uid":       string(e.UID),
+				"name":      e.Name,
+				"namespace": e.Namespace,
+				"creationTimestamp": func() string {
+					if e.ObjectMeta.CreationTimestamp.IsZero() {
+						return ""
+					}
+					return e.ObjectMeta.CreationTimestamp.Time.UTC().Format(time.RFC3339)
+				}(),
+			},
+			"involvedObject": gin.H{
+				"kind":       e.InvolvedObject.Kind,
+				"name":       e.InvolvedObject.Name,
+				"namespace":  e.InvolvedObject.Namespace,
+				"uid":        string(e.InvolvedObject.UID),
+				"apiVersion": e.InvolvedObject.APIVersion,
+				"fieldPath":  e.InvolvedObject.FieldPath,
+			},
+			"type":    e.Type,
+			"reason":  e.Reason,
+			"message": e.Message,
+			"source":  gin.H{"component": e.Source.Component, "host": e.Source.Host},
+			"firstTimestamp": func() string {
+				if e.FirstTimestamp.IsZero() {
+					return ""
+				}
+				return e.FirstTimestamp.Time.UTC().Format(time.RFC3339)
+			}(),
+			"lastTimestamp": lastTS,
+			"eventTime": func() string {
+				if e.EventTime.IsZero() {
+					return ""
+				}
+				return e.EventTime.Time.UTC().Format(time.RFC3339)
+			}(),
+			"count": e.Count,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "获取成功",
+		"data":    out,
+	})
 }
 
 // GetClusterMetrics 获取集群监控数据
