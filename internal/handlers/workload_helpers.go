@@ -6,6 +6,7 @@ import (
 
 	"kubepolaris/internal/services"
 
+	rollouts "github.com/argoproj/argo-rollouts/pkg/apis/rollouts/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
@@ -116,31 +117,6 @@ func (h *WorkloadHandler) getJobs(ctx context.Context, k8sClient *services.K8sCl
 	return workloads, nil
 }
 
-// getCronJobs 获取CronJob列表
-func (h *WorkloadHandler) getCronJobs(ctx context.Context, k8sClient *services.K8sClient, namespace string) ([]WorkloadInfo, error) {
-	var listOptions metav1.ListOptions
-
-	var cronJobs *batchv1beta1.CronJobList
-	var err error
-
-	if namespace == "" {
-		cronJobs, err = k8sClient.GetClientset().BatchV1beta1().CronJobs("").List(ctx, listOptions)
-	} else {
-		cronJobs, err = k8sClient.GetClientset().BatchV1beta1().CronJobs(namespace).List(ctx, listOptions)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	var workloads []WorkloadInfo
-	for _, cronJob := range cronJobs.Items {
-		workloads = append(workloads, h.convertCronJobToWorkloadInfo(&cronJob))
-	}
-
-	return workloads, nil
-}
-
 // convertDeploymentToWorkloadInfo 转换Deployment为WorkloadInfo
 func (h *WorkloadHandler) convertDeploymentToWorkloadInfo(deployment *appsv1.Deployment) WorkloadInfo {
 	status := "Unknown"
@@ -173,6 +149,47 @@ func (h *WorkloadHandler) convertDeploymentToWorkloadInfo(deployment *appsv1.Dep
 		CreatedAt:         deployment.CreationTimestamp.Time,
 		Images:            images,
 		Selector:          deployment.Spec.Selector.MatchLabels,
+		Strategy:          strategy,
+	}
+}
+
+// convertRolloutToWorkloadInfo 转换Rollout为WorkloadInfo
+func (h *WorkloadHandler) convertRolloutToWorkloadInfo(rollout *rollouts.Rollout) WorkloadInfo {
+	status := "Unknown"
+	if rollout.Status.AvailableReplicas == *rollout.Spec.Replicas {
+		status = "Ready"
+	} else if rollout.Status.AvailableReplicas > 0 {
+		status = "Partial"
+	} else {
+		status = "NotReady"
+	}
+
+	images := []string{}
+	for _, container := range rollout.Spec.Template.Spec.Containers {
+		images = append(images, container.Image)
+	}
+
+	strategy := "Unknown"
+	if rollout.Spec.Strategy.Canary != nil {
+		strategy = "Canary"
+	} else if rollout.Spec.Strategy.BlueGreen != nil {
+		strategy = "BlueGreen"
+	}
+
+	return WorkloadInfo{
+		ID:                fmt.Sprintf("%s-%s", rollout.Namespace, rollout.Name),
+		Name:              rollout.Name,
+		Namespace:         rollout.Namespace,
+		Type:              WorkloadTypeRollout,
+		Status:            status, // Rollout没有Status字段
+		Replicas:          *rollout.Spec.Replicas,
+		ReadyReplicas:     rollout.Status.AvailableReplicas,
+		AvailableReplicas: rollout.Status.AvailableReplicas,
+		Labels:            rollout.Labels,
+		Annotations:       rollout.Annotations,
+		CreatedAt:         rollout.CreationTimestamp.Time,
+		Images:            images,
+		Selector:          rollout.Spec.Selector.MatchLabels,
 		Strategy:          strategy,
 	}
 }
@@ -302,6 +319,10 @@ func (h *WorkloadHandler) convertCronJobToWorkloadInfo(cronJob *batchv1beta1.Cro
 	}
 
 	activeJobs := int32(len(cronJob.Status.Active))
+	selector := map[string]string{}
+	if cronJob.Spec.JobTemplate.Spec.Selector != nil {
+		selector = cronJob.Spec.JobTemplate.Spec.Selector.MatchLabels
+	}
 
 	return WorkloadInfo{
 		ID:                fmt.Sprintf("%s-%s", cronJob.Namespace, cronJob.Name),
@@ -316,7 +337,7 @@ func (h *WorkloadHandler) convertCronJobToWorkloadInfo(cronJob *batchv1beta1.Cro
 		Annotations:       cronJob.Annotations,
 		CreatedAt:         cronJob.CreationTimestamp.Time,
 		Images:            images,
-		Selector:          cronJob.Spec.JobTemplate.Spec.Selector.MatchLabels,
+		Selector:          selector,
 		Schedule:          cronJob.Spec.Schedule,
 	}
 }

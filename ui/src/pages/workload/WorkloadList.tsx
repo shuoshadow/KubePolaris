@@ -34,6 +34,7 @@ import { WorkloadService } from '../../services/workloadService';
 import type { WorkloadInfo } from '../../services/workloadService';
 import { clusterService } from '../../services/clusterService';
 import type { Cluster } from '../../types';
+import type { ColumnsType } from 'antd/es/table';
 
 const { Option } = Select;
 const { Search } = Input;
@@ -52,7 +53,28 @@ const WorkloadList: React.FC<WorkloadListProps> = () => {
   const [selectedNamespace, setSelectedNamespace] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
   // 新增：分类（无状态/有状态/守护进程集/普通任务/定时任务）
-  const [category, setCategory] = useState<'stateless' | 'stateful' | 'daemonset' | 'job' | 'cronjob' | 'all'>('stateless');
+  const [category, setCategory] = useState<'stateless' | 'stateful' | 'daemonset' | 'job' | 'cronjob'>('stateless');
+
+  // 基于分类动态生成的类型标签列表
+  const getCategoryTypes = (): Array<{ label: string; value: string }> => {
+    switch (category) {
+      case 'stateless':
+        return [
+          { label: 'Deployment', value: 'deployment' },
+          { label: 'Argo Rollout', value: 'argo-rollout' },
+        ];
+      case 'stateful':
+        return [{ label: 'StatefulSet', value: 'statefulset' }];
+      case 'daemonset':
+        return [{ label: 'DaemonSet', value: 'daemonset' }];
+      case 'job':
+        return [{ label: 'Job', value: 'job' }];
+      case 'cronjob':
+        return [{ label: 'CronJob', value: 'cronjob' }];
+      default:
+        return [];
+    }
+  };
   const [searchText, setSearchText] = useState('');
   const [scaleModalVisible, setScaleModalVisible] = useState(false);
   const [scaleWorkload, setScaleWorkload] = useState<WorkloadInfo | null>(null);
@@ -229,8 +251,7 @@ const WorkloadList: React.FC<WorkloadListProps> = () => {
     const type = (workload.type || '').toLowerCase();
     // 分类规则
     const inCategory =
-      category === 'all' ? true
-      : category === 'stateless' ? (type === 'deployment' || type === 'argo-rollout' || type === 'rollout' || type === 'rollouts')
+       category === 'stateless' ? (type === 'deployment' || type === 'argo-rollout')
       : category === 'stateful' ? (type === 'statefulset')
       : category === 'daemonset' ? (type === 'daemonset')
       : category === 'job' ? (type === 'job')
@@ -257,17 +278,11 @@ const WorkloadList: React.FC<WorkloadListProps> = () => {
     }
   }, [selectedClusterId, fetchWorkloads]);
 
-  // 分类切换时清空已选类型，避免分类与类型冲突导致无数据
-  useEffect(() => {
-    setSelectedType('');
-  }, [category]);
 
-  // 当分类变更时，清空已选具体类型，避免分类与类型冲突导致无数据
-  useEffect(() => {
-    setSelectedType('');
-  }, [category]);
 
-  const columns = [
+
+
+  const columns: ColumnsType<WorkloadInfo> = [
     {
       title: '名称',
       dataIndex: 'name',
@@ -376,7 +391,7 @@ const WorkloadList: React.FC<WorkloadListProps> = () => {
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 150,
-      responsive: ['lg'],
+      responsive: ['lg'] as ('xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl')[],
       render: (text: string) => {
         if (!text) return '-';
         const date = new Date(text);
@@ -394,7 +409,7 @@ const WorkloadList: React.FC<WorkloadListProps> = () => {
       fixed: 'right' as const,
       render: (record: WorkloadInfo) => {
         const t = (record.type || '').toLowerCase();
-        const canScale = ['deployment', 'statefulset', 'argo-rollout', 'rollout', 'rollouts'].includes(t);
+        const canScale = ['deployment', 'statefulset', 'argo-rollout'].includes(t);
         
         const menuItems = [
           {
@@ -506,7 +521,24 @@ const WorkloadList: React.FC<WorkloadListProps> = () => {
                 { label: '定时任务', value: 'cronjob' },
               ]}
               value={category}
-              onChange={(v) => setCategory(v as any)}
+              onChange={(v) => {
+                const next = v as 'stateless' | 'stateful' | 'daemonset' | 'job' | 'cronjob';
+                setCategory(next);
+                if (next === 'stateless') {
+                  setSelectedType('Stateless');
+                } else if (next === 'stateful') {
+                  setSelectedType('StatefulSet');
+                } else if (next === 'daemonset') {
+                  setSelectedType('DaemonSet');
+                } else if (next === 'job') {
+                  setSelectedType('Job');
+                } else if (next === 'cronjob') {
+                  setSelectedType('CronJob');
+                } else {
+                  setSelectedType('Stateless');
+                }
+                setCurrentPage(1);
+              }}
             />
             
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -551,8 +583,27 @@ const WorkloadList: React.FC<WorkloadListProps> = () => {
                   <Option key={ns} value={ns}>{ns}</Option>
                 ))}
               </Select>
-              
-              
+
+              {/* 类型标签筛选：随分类动态变化 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {getCategoryTypes().map(t => {
+                  const active = selectedType.toLowerCase() === t.value;
+                  return (
+                    <Tag
+                      key={t.value}
+                      color={active ? 'processing' : 'default'}
+                      style={{ cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => {
+                        setCurrentPage(1);
+                        setSelectedType(active ? '' : t.value);
+                      }}
+                    >
+                      {t.label}
+                    </Tag>
+                  );
+                })}
+              </div>
+
               <Search
                 placeholder="搜索工作负载名称"
                 style={{ width: 250, minWidth: 200, maxWidth: 300 }}

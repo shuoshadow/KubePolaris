@@ -45,6 +45,8 @@ type WorkloadType string
 
 const (
 	WorkloadTypeDeployment  WorkloadType = "Deployment"
+	WorkloadTypeRollout     WorkloadType = "Rollout"
+	WorkloadTypeStateless   WorkloadType = "Stateless"
 	WorkloadTypeStatefulSet WorkloadType = "StatefulSet"
 	WorkloadTypeDaemonSet   WorkloadType = "DaemonSet"
 	WorkloadTypeJob         WorkloadType = "Job"
@@ -115,7 +117,7 @@ func (h *WorkloadHandler) GetWorkloads(c *gin.Context) {
 	sel := labels.Everything()
 
 	// Deployments
-	if workloadType == "" || workloadType == string(WorkloadTypeDeployment) {
+	if workloadType == "" || workloadType == string(WorkloadTypeDeployment) || workloadType == string(WorkloadTypeStateless) {
 		if namespace != "" {
 			deps, err := h.k8sMgr.DeploymentsLister(cluster.ID).Deployments(namespace).List(sel)
 			if err != nil {
@@ -137,8 +139,32 @@ func (h *WorkloadHandler) GetWorkloads(c *gin.Context) {
 		}
 	}
 
+	// Rollouts
+	if workloadType == "" || workloadType == string(WorkloadTypeRollout) || workloadType == string(WorkloadTypeStateless) {
+		if namespace != "" {
+			// 过滤 Ns
+			rs, err := h.k8sMgr.RolloutsLister(cluster.ID).Rollouts(namespace).List(sel)
+			if err != nil {
+				logger.Error("读取Rollout缓存失败", "error", err)
+			} else {
+				for _, r := range rs {
+					workloads = append(workloads, h.convertRolloutToWorkloadInfo(r))
+				}
+			}
+		} else {
+			rs, err := h.k8sMgr.RolloutsLister(cluster.ID).List(sel)
+			if err != nil {
+				logger.Error("读取Rollout缓存失败", "error", err)
+			} else {
+				for _, r := range rs {
+					workloads = append(workloads, h.convertRolloutToWorkloadInfo(r))
+				}
+			}
+		}
+	}
+
 	// StatefulSets
-	if workloadType == "" || workloadType == string(WorkloadTypeStatefulSet) {
+	if workloadType == string(WorkloadTypeStatefulSet) {
 		if l := h.k8sMgr.StatefulSetsLister(cluster.ID); l != nil {
 			if namespace != "" {
 				items, err := l.StatefulSets(namespace).List(sel)
@@ -163,7 +189,7 @@ func (h *WorkloadHandler) GetWorkloads(c *gin.Context) {
 	}
 
 	// DaemonSets
-	if workloadType == "" || workloadType == string(WorkloadTypeDaemonSet) {
+	if workloadType == string(WorkloadTypeDaemonSet) {
 		if l := h.k8sMgr.DaemonSetsLister(cluster.ID); l != nil {
 			if namespace != "" {
 				items, err := l.DaemonSets(namespace).List(sel)
@@ -188,7 +214,7 @@ func (h *WorkloadHandler) GetWorkloads(c *gin.Context) {
 	}
 
 	// Jobs
-	if workloadType == "" || workloadType == string(WorkloadTypeJob) {
+	if workloadType == string(WorkloadTypeJob) {
 		if namespace != "" {
 			items, err := h.k8sMgr.JobsLister(cluster.ID).Jobs(namespace).List(sel)
 			if err != nil {
@@ -211,7 +237,7 @@ func (h *WorkloadHandler) GetWorkloads(c *gin.Context) {
 	}
 
 	// CronJobs
-	if workloadType == "" || workloadType == string(WorkloadTypeCronJob) {
+	if workloadType == string(WorkloadTypeCronJob) {
 		if namespace != "" {
 			items, err := h.k8sMgr.CronJobsLister(cluster.ID).CronJobs(namespace).List(sel)
 			if err != nil {
@@ -616,7 +642,7 @@ func (h *WorkloadHandler) DeleteWorkload(c *gin.Context) {
 	case WorkloadTypeJob:
 		err = k8sClient.GetClientset().BatchV1().Jobs(namespace).Delete(ctx, name, deleteOptions)
 	case WorkloadTypeCronJob:
-		err = k8sClient.GetClientset().BatchV1beta1().CronJobs(namespace).Delete(ctx, name, deleteOptions)
+		err = k8sClient.GetClientset().BatchV1().CronJobs(namespace).Delete(ctx, name, deleteOptions)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,

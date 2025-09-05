@@ -12,15 +12,18 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	dynamic "k8s.io/client-go/dynamic"
-	dynamicinformer "k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	batchv1listers "k8s.io/client-go/listers/batch/v1"
 	batchv1beta1listers "k8s.io/client-go/listers/batch/v1beta1"
+
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+
+	rolloutsclientset "github.com/argoproj/argo-rollouts/pkg/client/clientset/versioned"
+	rolloutsinformers "github.com/argoproj/argo-rollouts/pkg/client/informers/externalversions"
+	rolloutslisters "github.com/argoproj/argo-rollouts/pkg/client/listers/rollouts/v1alpha1"
 )
 
 type ClusterRuntime struct {
@@ -33,13 +36,13 @@ type ClusterRuntime struct {
 
 	stopCh chan struct{}
 
-	// Argo Rollouts dynamic informer (optional if CRD present)
-	rolloutEnabled  bool
-	dynamicClient   dynamic.Interface
-	dynamicFactory  dynamicinformer.DynamicSharedInformerFactory
-	rolloutInformer cache.SharedIndexInformer
-	rolloutLister   cache.GenericLister
-	rolloutGVR      schema.GroupVersionResource
+	// Argo Rollouts typed informer (if CRD present)
+	rolloutEnabled      bool
+	rolloutsClientset   *rolloutsclientset.Clientset
+	rolloutsFactory     rolloutsinformers.SharedInformerFactory
+	rolloutInformer     cache.SharedIndexInformer
+	rolloutLister       rolloutslisters.RolloutLister
+	rolloutGroupVersion schema.GroupVersion
 }
 
 // ClusterInformerManager 统一管理各集群的 Informer 生命周期与缓存访问
@@ -96,21 +99,19 @@ func (m *ClusterInformerManager) EnsureForCluster(cluster *models.Cluster) (*Clu
 	_ = factory.Batch().V1().Jobs().Informer()
 	_ = factory.Batch().V1beta1().CronJobs().Informer()
 
-	// Detect and setup Argo Rollouts dynamic informer if CRD exists
+	// Detect and setup Argo Rollouts typed informer if CRD exists
 	if gv, found := hasArgoRollouts(clientset); found {
-		// 重用与 clientset 同源的 REST 配置
 		cfg := kc.GetRestConfig()
 		if cfg != nil {
-			if dyn, err := dynamic.NewForConfig(cfg); err != nil {
-				logger.Error("创建动态客户端失败", "error", err)
+			if roc, err := rolloutsclientset.NewForConfig(cfg); err != nil {
+				logger.Error("创建 Argo Rollouts client 失败", "error", err)
 			} else {
-				rt.dynamicClient = dyn
-				rt.dynamicFactory = dynamicinformer.NewDynamicSharedInformerFactory(dyn, 0)
-				gvr := schema.GroupVersionResource{Group: gv.Group, Version: gv.Version, Resource: "rollouts"}
-				dinf := rt.dynamicFactory.ForResource(gvr)
-				rt.rolloutInformer = dinf.Informer()
-				rt.rolloutLister = dinf.Lister()
-				rt.rolloutGVR = gvr
+				rt.rolloutsClientset = roc
+				rt.rolloutsFactory = rolloutsinformers.NewSharedInformerFactory(roc, 0)
+				informer := rt.rolloutsFactory.Argoproj().V1alpha1().Rollouts()
+				rt.rolloutInformer = informer.Informer()
+				rt.rolloutLister = informer.Lister()
+				rt.rolloutGroupVersion = gv
 				rt.rolloutEnabled = true
 			}
 		}
@@ -119,8 +120,8 @@ func (m *ClusterInformerManager) EnsureForCluster(cluster *models.Cluster) (*Clu
 	// 启动
 	rt.startOnce.Do(func() {
 		factory.Start(rt.stopCh)
-		if rt.dynamicFactory != nil {
-			rt.dynamicFactory.Start(rt.stopCh)
+		if rt.rolloutsFactory != nil {
+			rt.rolloutsFactory.Start(rt.stopCh)
 		}
 		rt.started = true
 	})
@@ -237,7 +238,7 @@ func (m *ClusterInformerManager) GetOverviewSnapshot(ctx context.Context, cluste
 	}
 
 	// Rollouts
-	if rt.rolloutEnabled {
+	if rt.rolloutEnabled && rt.rolloutLister != nil {
 		rollouts, err := rt.rolloutLister.List(labels.Everything())
 		if err != nil {
 			logger.Error("读取缓存 rollouts 失败", "error", err)
@@ -377,7 +378,7 @@ func hasArgoRollouts(cs *kubernetes.Clientset) (schema.GroupVersion, bool) {
 }
 
 // RolloutsLister 返回 Argo Rollouts 的 GenericLister（若 CRD 存在）
-func (m *ClusterInformerManager) RolloutsLister(clusterID uint) cache.GenericLister {
+func (m *ClusterInformerManager) RolloutsLister(clusterID uint) rolloutslisters.RolloutLister {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if rt, ok := m.clusters[clusterID]; ok && rt.rolloutEnabled && rt.rolloutLister != nil {
