@@ -524,19 +524,8 @@ const WorkloadList: React.FC<WorkloadListProps> = () => {
               onChange={(v) => {
                 const next = v as 'stateless' | 'stateful' | 'daemonset' | 'job' | 'cronjob';
                 setCategory(next);
-                if (next === 'stateless') {
-                  setSelectedType('Stateless');
-                } else if (next === 'stateful') {
-                  setSelectedType('StatefulSet');
-                } else if (next === 'daemonset') {
-                  setSelectedType('DaemonSet');
-                } else if (next === 'job') {
-                  setSelectedType('Job');
-                } else if (next === 'cronjob') {
-                  setSelectedType('CronJob');
-                } else {
-                  setSelectedType('Stateless');
-                }
+                // 切换分类时清空具体类型筛选，避免与分类不一致导致列表为空
+                setSelectedType('');
                 setCurrentPage(1);
               }}
             />
