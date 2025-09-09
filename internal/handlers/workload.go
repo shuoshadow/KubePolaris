@@ -88,10 +88,11 @@ func (h *WorkloadHandler) GetWorkloads(c *gin.Context) {
 	clusterId := c.Param("clusterID")
 	namespace := c.Query("namespace")
 	workloadType := c.Query("type")
+	searchName := c.Query("search") // 新增搜索参数
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
 
-	logger.Info("获取工作负载列表: cluster=%s, namespace=%s, type=%s", clusterId, namespace, workloadType)
+	logger.Info("获取工作负载列表: cluster=%s, namespace=%s, type=%s, search=%s", clusterId, namespace, workloadType, searchName)
 
 	// 从集群服务获取集群信息
 	clusterID := parseClusterID(clusterId)
@@ -258,6 +259,18 @@ func (h *WorkloadHandler) GetWorkloads(c *gin.Context) {
 	// 		}
 	// 	}
 	// }
+
+	// 按名称搜索过滤
+	if searchName != "" {
+		var filteredWorkloads []WorkloadInfo
+		searchLower := strings.ToLower(searchName)
+		for _, workload := range workloads {
+			if strings.Contains(strings.ToLower(workload.Name), searchLower) {
+				filteredWorkloads = append(filteredWorkloads, workload)
+			}
+		}
+		workloads = filteredWorkloads
+	}
 
 	// 分页处理
 	total := len(workloads)

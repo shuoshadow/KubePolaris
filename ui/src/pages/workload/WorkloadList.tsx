@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -70,6 +70,9 @@ const WorkloadList: React.FC = () => {
   const [scaleWorkload, setScaleWorkload] = useState<WorkloadInfo | null>(null);
   const [scaleReplicas, setScaleReplicas] = useState(1);
   const [selectedClusterId, setSelectedClusterId] = useState<string>(routeClusterId || '1');
+  
+  // 搜索防抖
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
   // 获取工作负载列表
@@ -83,7 +86,8 @@ const WorkloadList: React.FC = () => {
         selectedNamespace || undefined,
         selectedType || undefined,
         currentPage,
-        pageSize
+        pageSize,
+        searchText || undefined // 传递搜索参数
       );
       
       if (response.code === 200) {
@@ -99,7 +103,7 @@ const WorkloadList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClusterId, selectedNamespace, selectedType, currentPage, pageSize]);
+  }, [selectedClusterId, selectedNamespace, selectedType, currentPage, pageSize, searchText]);
 
   // 集群切换 - 监听路由参数变化
   useEffect(() => {
@@ -231,7 +235,7 @@ const WorkloadList: React.FC = () => {
     return namespaces.sort();
   };
 
-  // 过滤工作负载（按分类 + 名称）
+  // 过滤工作负载（按分类）
   const filteredWorkloads = workloads.filter(workload => {
     const type = (workload.type || '').toLowerCase();
     const category = (selectedType || '').toLowerCase();
@@ -244,13 +248,28 @@ const WorkloadList: React.FC = () => {
       : category === 'cronjob' ? (type === 'cronjob')
       : true;
 
-    if (!inCategory) return false;
-
-    if (searchText && !workload.name.toLowerCase().includes(searchText.toLowerCase())) {
-      return false;
-    }
-    return true;
+    return inCategory;
   });
+
+  // 搜索防抖处理
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      if (selectedClusterId) {
+        setCurrentPage(1); // 搜索时重置到第一页
+        fetchWorkloads();
+      }
+    }, 500); // 500ms 防抖延迟
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchText, selectedClusterId, fetchWorkloads]);
 
   // 初始化加载
   useEffect(() => {
@@ -575,13 +594,13 @@ const WorkloadList: React.FC = () => {
 
         <Table
           columns={columns}
-          // dataSource={
-          //   // 若用户选择了具体类型，则在分类过滤后再按类型过滤
-          //   selectedType
-          //     ? filteredWorkloads.filter(w => (w.type || '').toLowerCase() === selectedType.toLowerCase())
-          //     : filteredWorkloads
-          // }
-          dataSource={workloads}
+          dataSource={
+            // 若用户选择了具体类型，则在分类过滤后再按类型过滤
+            selectedType
+              ? filteredWorkloads.filter(w => (w.type || '').toLowerCase() === selectedType.toLowerCase())
+              : filteredWorkloads
+          }
+          // dataSource={workloads}
           rowKey={(record) => `${record.namespace}-${record.name}-${record.type}`}
           rowSelection={rowSelection}
           loading={loading}

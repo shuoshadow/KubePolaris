@@ -66,7 +66,8 @@ export class WorkloadService {
     namespace?: string,
     workloadType?: string,
     page = 1,
-    pageSize = 20
+    pageSize = 20,
+    search?: string // 新增搜索参数
   ): Promise<WorkloadListResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -80,6 +81,11 @@ export class WorkloadService {
     if (workloadType) {
       params.append('type', workloadType);
     }
+    
+    if (search) {
+      params.append('search', search);
+    }
+    
     return request.get(`/clusters/${clusterId}/workloads?${params}`);
   }
 
