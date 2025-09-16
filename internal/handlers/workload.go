@@ -15,6 +15,7 @@ import (
 	"kubepolaris/internal/services"
 	"kubepolaris/pkg/logger"
 
+	rolloutsclientset "github.com/argoproj/argo-rollouts/pkg/client/clientset/versioned"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -356,6 +357,26 @@ func (h *WorkloadHandler) GetWorkload(c *gin.Context) {
 		}
 		workload = deployment
 		workloadInfo = h.convertDeploymentToWorkloadInfo(deployment)
+
+	case WorkloadTypeRollout:
+		rolloutsClient, err := rolloutsclientset.NewForConfig(k8sClient.GetRestConfig())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    500,
+				"message": "创建Argo Rollouts客户端失败: " + err.Error(),
+			})
+			return
+		}
+		rollout, err := rolloutsClient.ArgoprojV1alpha1().Rollouts(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{
+				"code":    404,
+				"message": "工作负载不存在: " + err.Error(),
+			})
+			return
+		}
+		workload = rollout
+		workloadInfo = h.convertRolloutToWorkloadInfo(rollout)
 
 	case WorkloadTypeStatefulSet:
 		statefulSet, err := k8sClient.GetClientset().AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})

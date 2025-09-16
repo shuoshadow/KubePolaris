@@ -209,6 +209,29 @@ func (h *SearchHandler) GlobalSearch(c *gin.Context) {
 			}
 		}
 
+		// Rollout
+		rolloutLister := h.k8sMgr.RolloutsLister(cluster.ID)
+		if rolloutLister != nil {
+			rollouts, err := rolloutLister.List(labels.Everything())
+			if err == nil {
+				for _, rollout := range rollouts {
+					if strings.Contains(strings.ToLower(rollout.Name), strings.ToLower(query)) {
+						results = append(results, SearchResult{
+							Type:        "workload",
+							ID:          rollout.Name,
+							Name:        rollout.Name,
+							Namespace:   rollout.Namespace,
+							ClusterID:   clusterIDStr,
+							ClusterName: cluster.Name,
+							Status:      "Rollout",
+							Kind:        "Rollout",
+							Description: strconv.FormatInt(int64(rollout.Status.AvailableReplicas), 10),
+						})
+					}
+				}
+			}
+		}
+
 		// StatefulSet
 		statefulSetLister := h.k8sMgr.StatefulSetsLister(cluster.ID)
 		if statefulSetLister != nil {
@@ -326,7 +349,16 @@ func (h *SearchHandler) QuickSearch(c *gin.Context) {
 		return
 	}
 
-	var results []SearchResult
+	// 按资源类型分组存储结果，确保每种类型都能被搜索到
+	typeResults := map[string][]SearchResult{
+		"cluster":  {},
+		"node":     {},
+		"pod":      {},
+		"workload": {},
+	}
+
+	// 每种资源类型都有独立的 limit 限制
+	typeLimit := limit
 
 	// 遍历所有集群进行搜索
 	for _, cluster := range clusters {
@@ -340,8 +372,8 @@ func (h *SearchHandler) QuickSearch(c *gin.Context) {
 		clusterIDStr := strconv.FormatUint(uint64(cluster.ID), 10)
 
 		// 搜索集群本身
-		if strings.Contains(strings.ToLower(cluster.Name), strings.ToLower(query)) {
-			results = append(results, SearchResult{
+		if len(typeResults["cluster"]) < typeLimit && strings.Contains(strings.ToLower(cluster.Name), strings.ToLower(query)) {
+			typeResults["cluster"] = append(typeResults["cluster"], SearchResult{
 				Type:        "cluster",
 				ID:          clusterIDStr,
 				Name:        cluster.Name,
@@ -353,86 +385,186 @@ func (h *SearchHandler) QuickSearch(c *gin.Context) {
 		}
 
 		// 搜索节点
-		nodeLister := h.k8sMgr.NodesLister(cluster.ID)
-		if nodeLister != nil {
-			nodes, err := nodeLister.List(labels.Everything())
-			if err == nil {
-				for _, node := range nodes {
-					if strings.Contains(strings.ToLower(node.Name), strings.ToLower(query)) {
-						results = append(results, SearchResult{
-							Type:        "node",
-							ID:          node.Name,
-							Name:        node.Name,
-							ClusterID:   clusterIDStr,
-							ClusterName: cluster.Name,
-							Status:      h.getNodeStatus(node),
-							Description: node.Spec.PodCIDR,
-							IP:          h.getNodeIP(node),
-						})
+		if len(typeResults["node"]) < typeLimit {
+			nodeLister := h.k8sMgr.NodesLister(cluster.ID)
+			if nodeLister != nil {
+				nodes, err := nodeLister.List(labels.Everything())
+				if err == nil {
+					for _, node := range nodes {
+						if len(typeResults["node"]) >= typeLimit {
+							break
+						}
+						if strings.Contains(strings.ToLower(node.Name), strings.ToLower(query)) {
+							typeResults["node"] = append(typeResults["node"], SearchResult{
+								Type:        "node",
+								ID:          node.Name,
+								Name:        node.Name,
+								ClusterID:   clusterIDStr,
+								ClusterName: cluster.Name,
+								Status:      h.getNodeStatus(node),
+								Description: node.Spec.PodCIDR,
+								IP:          h.getNodeIP(node),
+							})
+						}
 					}
 				}
 			}
 		}
 
 		// 搜索Pod
-		podLister := h.k8sMgr.PodsLister(cluster.ID)
-		if podLister != nil {
-			pods, err := podLister.List(labels.Everything())
-			if err == nil {
-				for _, pod := range pods {
-					if strings.Contains(strings.ToLower(pod.Name), strings.ToLower(query)) {
-						results = append(results, SearchResult{
-							Type:        "pod",
-							ID:          pod.Name,
-							Name:        pod.Name,
-							Namespace:   pod.Namespace,
-							ClusterID:   clusterIDStr,
-							ClusterName: cluster.Name,
-							Status:      string(pod.Status.Phase),
-							Description: pod.Spec.NodeName,
-							IP:          pod.Status.PodIP,
-						})
+		if len(typeResults["pod"]) < typeLimit {
+			podLister := h.k8sMgr.PodsLister(cluster.ID)
+			if podLister != nil {
+				pods, err := podLister.List(labels.Everything())
+				if err == nil {
+					for _, pod := range pods {
+						if len(typeResults["pod"]) >= typeLimit {
+							break
+						}
+						if strings.Contains(strings.ToLower(pod.Name), strings.ToLower(query)) {
+							typeResults["pod"] = append(typeResults["pod"], SearchResult{
+								Type:        "pod",
+								ID:          pod.Name,
+								Name:        pod.Name,
+								Namespace:   pod.Namespace,
+								ClusterID:   clusterIDStr,
+								ClusterName: cluster.Name,
+								Status:      string(pod.Status.Phase),
+								Description: pod.Spec.NodeName,
+								IP:          pod.Status.PodIP,
+							})
+						}
 					}
 				}
 			}
 		}
 
 		// 搜索工作负载
-		deploymentLister := h.k8sMgr.DeploymentsLister(cluster.ID)
-		if deploymentLister != nil {
-			deployments, err := deploymentLister.List(labels.Everything())
-			if err == nil {
-				for _, deployment := range deployments {
-					if strings.Contains(strings.ToLower(deployment.Name), strings.ToLower(query)) {
-						replicas := "1"
-						if deployment.Spec.Replicas != nil {
-							replicas = strconv.FormatInt(int64(*deployment.Spec.Replicas), 10)
+		if len(typeResults["workload"]) < typeLimit {
+			// Deployment
+			deploymentLister := h.k8sMgr.DeploymentsLister(cluster.ID)
+			if deploymentLister != nil {
+				deployments, err := deploymentLister.List(labels.Everything())
+				if err == nil {
+					for _, deployment := range deployments {
+						if len(typeResults["workload"]) >= typeLimit {
+							break
 						}
-						results = append(results, SearchResult{
-							Type:        "workload",
-							ID:          deployment.Name,
-							Name:        deployment.Name,
-							Namespace:   deployment.Namespace,
-							ClusterID:   clusterIDStr,
-							ClusterName: cluster.Name,
-							Status:      "Deployment",
-							Kind:        "Deployment",
-							Description: replicas,
-						})
+						if strings.Contains(strings.ToLower(deployment.Name), strings.ToLower(query)) {
+							replicas := "1"
+							if deployment.Spec.Replicas != nil {
+								replicas = strconv.FormatInt(int64(*deployment.Spec.Replicas), 10)
+							}
+							typeResults["workload"] = append(typeResults["workload"], SearchResult{
+								Type:        "workload",
+								ID:          deployment.Name,
+								Name:        deployment.Name,
+								Namespace:   deployment.Namespace,
+								ClusterID:   clusterIDStr,
+								ClusterName: cluster.Name,
+								Status:      "Deployment",
+								Kind:        "Deployment",
+								Description: replicas,
+							})
+						}
+					}
+				}
+			}
+
+			// StatefulSet
+			if len(typeResults["workload"]) < typeLimit {
+				statefulSetLister := h.k8sMgr.StatefulSetsLister(cluster.ID)
+				if statefulSetLister != nil {
+					statefulSets, err := statefulSetLister.List(labels.Everything())
+					if err == nil {
+						for _, statefulSet := range statefulSets {
+							if len(typeResults["workload"]) >= typeLimit {
+								break
+							}
+							if strings.Contains(strings.ToLower(statefulSet.Name), strings.ToLower(query)) {
+								replicas := "1"
+								if statefulSet.Spec.Replicas != nil {
+									replicas = strconv.FormatInt(int64(*statefulSet.Spec.Replicas), 10)
+								}
+								typeResults["workload"] = append(typeResults["workload"], SearchResult{
+									Type:        "workload",
+									ID:          statefulSet.Name,
+									Name:        statefulSet.Name,
+									Namespace:   statefulSet.Namespace,
+									ClusterID:   clusterIDStr,
+									ClusterName: cluster.Name,
+									Status:      "StatefulSet",
+									Kind:        "StatefulSet",
+									Description: replicas,
+								})
+							}
+						}
+					}
+				}
+			}
+
+			// DaemonSet
+			if len(typeResults["workload"]) < typeLimit {
+				daemonSetLister := h.k8sMgr.DaemonSetsLister(cluster.ID)
+				if daemonSetLister != nil {
+					daemonSets, err := daemonSetLister.List(labels.Everything())
+					if err == nil {
+						for _, daemonSet := range daemonSets {
+							if len(typeResults["workload"]) >= typeLimit {
+								break
+							}
+							if strings.Contains(strings.ToLower(daemonSet.Name), strings.ToLower(query)) {
+								typeResults["workload"] = append(typeResults["workload"], SearchResult{
+									Type:        "workload",
+									ID:          daemonSet.Name,
+									Name:        daemonSet.Name,
+									Namespace:   daemonSet.Namespace,
+									ClusterID:   clusterIDStr,
+									ClusterName: cluster.Name,
+									Status:      "DaemonSet",
+									Kind:        "DaemonSet",
+									Description: "DaemonSet",
+								})
+							}
+						}
+					}
+				}
+			}
+
+			// Rollout
+			if len(typeResults["workload"]) < typeLimit {
+				rolloutLister := h.k8sMgr.RolloutsLister(cluster.ID)
+				if rolloutLister != nil {
+					rollouts, err := rolloutLister.List(labels.Everything())
+					if err == nil {
+						for _, rollout := range rollouts {
+							if len(typeResults["workload"]) >= typeLimit {
+								break
+							}
+							if strings.Contains(strings.ToLower(rollout.Name), strings.ToLower(query)) {
+								typeResults["workload"] = append(typeResults["workload"], SearchResult{
+									Type:        "workload",
+									ID:          rollout.Name,
+									Name:        rollout.Name,
+									Namespace:   rollout.Namespace,
+									ClusterID:   clusterIDStr,
+									ClusterName: cluster.Name,
+									Status:      "Rollout",
+									Kind:        "Rollout",
+									Description: strconv.FormatInt(int64(rollout.Status.AvailableReplicas), 10),
+								})
+							}
+						}
 					}
 				}
 			}
 		}
-
-		// 如果结果数量达到限制，停止搜索
-		if len(results) >= limit {
-			break
-		}
 	}
 
-	// 限制结果数量
-	if len(results) > limit {
-		results = results[:limit]
+	// 合并所有类型的结果
+	var results []SearchResult
+	for _, typeResult := range typeResults {
+		results = append(results, typeResult...)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

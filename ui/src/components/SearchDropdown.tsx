@@ -138,13 +138,13 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onSearch }) => {
         navigate(`/clusters/${result.clusterId}/overview`);
         break;
       case 'node':
-        navigate(`/clusters/${result.clusterId}/nodes`);
+        navigate(`/clusters/${result.clusterId}/nodes/${result.name}`);
         break;
       case 'pod':
         navigate(`/clusters/${result.clusterId}/pods/${result.namespace}/${result.name}`);
         break;
       case 'workload':
-        navigate(`/clusters/${result.clusterId}/workloads/${result.namespace}/${result.name}`);
+        navigate(`/clusters/${result.clusterId}/workloads/${result.namespace}/${result.name}?type=${result.kind}`);
         break;
     }
   };

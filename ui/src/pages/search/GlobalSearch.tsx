@@ -46,11 +46,11 @@ const GlobalSearch: React.FC = () => {
   // 从URL参数获取搜索关键词
   useEffect(() => {
     const urlQuery = searchParams.get('q');
-    if (urlQuery && urlQuery !== query) {
+    if (urlQuery) {
       setQuery(urlQuery);
       performSearch(urlQuery);
     }
-  }, [searchParams, query]);
+  }, [searchParams]);
 
 
   // 执行搜索
@@ -143,13 +143,13 @@ const GlobalSearch: React.FC = () => {
         navigate(`/clusters/${result.clusterId}/overview`);
         break;
       case 'node':
-        navigate(`/clusters/${result.clusterId}/nodes`);
+        navigate(`/clusters/${result.clusterId}/nodes/${result.name}`);
         break;
       case 'pod':
         navigate(`/clusters/${result.clusterId}/pods/${result.namespace}/${result.name}`);
         break;
       case 'workload':
-        navigate(`/clusters/${result.clusterId}/workloads/${result.namespace}/${result.name}`);
+        navigate(`/clusters/${result.clusterId}/workloads/${result.namespace}/${result.name}?type=${result.kind}`);
         break;
     }
   };
