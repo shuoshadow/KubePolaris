@@ -278,7 +278,7 @@ func (h *MonitoringHandler) GetPodMetrics(c *gin.Context) {
 	}
 
 	namespace := c.Param("namespace")
-	podName := c.Param("podName")
+	podName := c.Param("name")
 	if namespace == "" || podName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,

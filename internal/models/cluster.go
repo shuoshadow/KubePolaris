@@ -115,6 +115,25 @@ type ClusterMetricsData struct {
 	Network *NetworkMetrics `json:"network,omitempty"`
 	Storage *MetricSeries   `json:"storage,omitempty"`
 	Pods    *PodMetrics     `json:"pods,omitempty"`
+	/** genAI_main_start */
+	// Pod 级别的扩展监控指标
+	CPURequest        *MetricSeries   `json:"cpu_request,omitempty"`         // CPU 请求值（固定）
+	CPULimit          *MetricSeries   `json:"cpu_limit,omitempty"`           // CPU 限制值（固定）
+	MemoryRequest     *MetricSeries   `json:"memory_request,omitempty"`      // 内存请求值（固定）
+	MemoryLimit       *MetricSeries   `json:"memory_limit,omitempty"`        // 内存限制值（固定）
+	ProbeFailures     *MetricSeries   `json:"probe_failures,omitempty"`      // 健康检查失败次数
+	ContainerRestarts *MetricSeries   `json:"container_restarts,omitempty"`  // 容器重启次数
+	NetworkPPS        *NetworkPPS     `json:"network_pps,omitempty"`         // 网络PPS（包/秒）
+	Threads           *MetricSeries   `json:"threads,omitempty"`             // 线程数
+	NetworkDrops      *NetworkDrops   `json:"network_drops,omitempty"`       // 网卡丢包情况
+	CPUThrottling     *MetricSeries   `json:"cpu_throttling,omitempty"`      // CPU 限流比例
+	CPUThrottlingTime *MetricSeries   `json:"cpu_throttling_time,omitempty"` // CPU 限流时间
+	DiskIOPS          *DiskIOPS       `json:"disk_iops,omitempty"`           // 磁盘 IOPS
+	DiskThroughput    *DiskThroughput `json:"disk_throughput,omitempty"`     // 磁盘吞吐量
+	CPUUsageAbsolute  *MetricSeries   `json:"cpu_usage_absolute,omitempty"`  // CPU 实际使用量（cores）
+	MemoryUsageBytes  *MetricSeries   `json:"memory_usage_bytes,omitempty"`  // 内存实际使用量（bytes）
+	OOMKills          *MetricSeries   `json:"oom_kills,omitempty"`           // OOM Kill 次数
+	/** genAI_main_end */
 }
 
 // MetricSeries 指标时间序列
@@ -149,3 +168,30 @@ type ContainerSubnetIPs struct {
 	UsedIPs      int `json:"used_ips"`
 	AvailableIPs int `json:"available_ips"`
 }
+
+/** genAI_main_start */
+// NetworkPPS 网络PPS指标
+type NetworkPPS struct {
+	In  *MetricSeries `json:"in"`  // 入站PPS
+	Out *MetricSeries `json:"out"` // 出站PPS
+}
+
+// NetworkDrops 网卡丢包指标
+type NetworkDrops struct {
+	Receive  *MetricSeries `json:"receive"`  // 接收丢包
+	Transmit *MetricSeries `json:"transmit"` // 发送丢包
+}
+
+// DiskIOPS 磁盘IOPS指标
+type DiskIOPS struct {
+	Read  *MetricSeries `json:"read"`  // 读IOPS
+	Write *MetricSeries `json:"write"` // 写IOPS
+}
+
+// DiskThroughput 磁盘吞吐量指标
+type DiskThroughput struct {
+	Read  *MetricSeries `json:"read"`  // 读吞吐量（bytes/s）
+	Write *MetricSeries `json:"write"` // 写吞吐量（bytes/s）
+}
+
+/** genAI_main_end */

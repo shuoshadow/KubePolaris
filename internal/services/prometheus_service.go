@@ -180,12 +180,13 @@ func (s *PrometheusService) QueryPodMetrics(ctx context.Context, config *models.
 	podSelector := s.buildPodSelector(config.Labels, clusterName, namespace, podName)
 
 	// 查询 Pod CPU 使用率
-	if cpuSeries, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("rate(container_cpu_usage_seconds_total{%s}[5m])", podSelector), start, end, step); err == nil {
+	if cpuSeries, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum (rate(container_cpu_usage_seconds_total{container!=\"\",%s}[1m])) by(pod) /( sum (kube_pod_container_resource_limits{container!=\"\",resource=\"cpu\",%s}) by(pod) ) * 100", podSelector, podSelector), start, end, step); err == nil {
 		metrics.CPU = cpuSeries
 	}
 
 	// 查询 Pod 内存使用率
-	if memorySeries, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("container_memory_working_set_bytes{%s}", podSelector), start, end, step); err == nil {
+	if memorySeries, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(container_memory_working_set_bytes{container!=\"\",container!=\"POD\",%s}) by(pod)/sum(kube_pod_container_resource_limits{container!=\"\",container!=\"POD\",resource=\"memory\",%s}) by (pod) * 100", podSelector, podSelector), start, end, step); err == nil {
+		// if memorySeries, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("container_memory_working_set_bytes{%s}", podSelector), start, end, step); err == nil {
 		metrics.Memory = memorySeries
 	}
 
@@ -193,6 +194,88 @@ func (s *PrometheusService) QueryPodMetrics(ctx context.Context, config *models.
 	if networkMetrics, err := s.queryPodNetworkMetrics(ctx, config, podSelector, start, end, step); err == nil {
 		metrics.Network = networkMetrics
 	}
+
+	/** genAI_main_start */
+	// 查询 CPU Request（固定值）
+	if cpuRequest, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(kube_pod_container_resource_requests{resource=\"cpu\",%s}) by (pod)", podSelector), start, end, step); err == nil {
+		metrics.CPURequest = cpuRequest
+	}
+
+	// 查询 CPU Limit（固定值）
+	if cpuLimit, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(kube_pod_container_resource_limits{resource=\"cpu\",%s}) by (pod)", podSelector), start, end, step); err == nil {
+		metrics.CPULimit = cpuLimit
+	}
+
+	// 查询 Memory Request（固定值）
+	if memoryRequest, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(kube_pod_container_resource_requests{resource=\"memory\",%s}) by (pod)", podSelector), start, end, step); err == nil {
+		metrics.MemoryRequest = memoryRequest
+	}
+
+	// 查询 Memory Limit（固定值）
+	if memoryLimit, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(kube_pod_container_resource_limits{resource=\"memory\",%s}) by (pod)", podSelector), start, end, step); err == nil {
+		metrics.MemoryLimit = memoryLimit
+	}
+
+	// 查询健康检查失败次数
+	if probeFailures, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("increase(prober_probe_total{result='failed',%s}[1m])", podSelector), start, end, step); err == nil {
+		metrics.ProbeFailures = probeFailures
+	}
+
+	// 查询容器重启次数
+	if restarts, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("kube_pod_container_status_restarts_total{%s}", podSelector), start, end, step); err == nil {
+		metrics.ContainerRestarts = restarts
+	}
+
+	// 查询网络PPS
+	if networkPPS, err := s.queryPodNetworkPPS(ctx, config, podSelector, start, end, step); err == nil {
+		metrics.NetworkPPS = networkPPS
+	}
+
+	// 查询线程数
+	if threads, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(container_threads{container!=\"\",container!=\"POD\",%s})", podSelector), start, end, step); err == nil {
+		metrics.Threads = threads
+	}
+
+	// 查询网卡丢包情况
+	if networkDrops, err := s.queryPodNetworkDrops(ctx, config, podSelector, start, end, step); err == nil {
+		metrics.NetworkDrops = networkDrops
+	}
+
+	// 查询 CPU 限流比例
+	if cpuThrottling, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(rate(container_cpu_cfs_throttled_periods_total{%s}[1m])) / sum(rate(container_cpu_cfs_periods_total{%s}[5m])) * 100", podSelector, podSelector), start, end, step); err == nil {
+		metrics.CPUThrottling = cpuThrottling
+	}
+
+	// 查询 CPU 限流时间
+	if cpuThrottlingTime, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(rate(container_cpu_cfs_throttled_seconds_total{%s}[1m]))", podSelector), start, end, step); err == nil {
+		metrics.CPUThrottlingTime = cpuThrottlingTime
+	}
+
+	// 查询磁盘 IOPS
+	if diskIOPS, err := s.queryPodDiskIOPS(ctx, config, podSelector, start, end, step); err == nil {
+		metrics.DiskIOPS = diskIOPS
+	}
+
+	// 查询磁盘吞吐量
+	if diskThroughput, err := s.queryPodDiskThroughput(ctx, config, podSelector, start, end, step); err == nil {
+		metrics.DiskThroughput = diskThroughput
+	}
+
+	// 查询 CPU 实际使用量（cores）
+	if cpuAbsolute, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",%s}[1m]))", podSelector), start, end, step); err == nil {
+		metrics.CPUUsageAbsolute = cpuAbsolute
+	}
+
+	// 查询内存实际使用量（bytes）
+	if memoryBytes, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(container_memory_working_set_bytes{container!=\"\",container!=\"POD\",%s})", podSelector), start, end, step); err == nil {
+		metrics.MemoryUsageBytes = memoryBytes
+	}
+
+	// 查询 OOM Kill 次数
+	if oomKills, err := s.queryMetricSeries(ctx, config, fmt.Sprintf("sum(container_oom_events_total{container!=\"\",container!=\"POD\",%s})", podSelector), start, end, step); err == nil {
+		metrics.OOMKills = oomKills
+	}
+	/** genAI_main_end */
 
 	return metrics, nil
 }
@@ -344,6 +427,7 @@ func (s *PrometheusService) buildPodSelector(labels map[string]string, clusterNa
 
 // queryMetricSeries 查询指标时间序列
 func (s *PrometheusService) queryMetricSeries(ctx context.Context, config *models.MonitoringConfig, query string, start, end int64, step string) (*models.MetricSeries, error) {
+	fmt.Println("query", query)
 	metricsQuery := &models.MetricsQuery{
 		Query: query,
 		Start: start,
@@ -657,3 +741,102 @@ func (s *PrometheusService) TestConnection(ctx context.Context, config *models.M
 
 	return nil
 }
+
+/** genAI_main_start */
+// queryPodNetworkPPS 查询 Pod 网络PPS指标
+func (s *PrometheusService) queryPodNetworkPPS(ctx context.Context, config *models.MonitoringConfig, selector string, start, end int64, step string) (*models.NetworkPPS, error) {
+	// 查询入站PPS
+	inQuery := fmt.Sprintf("sum(rate(container_network_receive_packets_total{%s}[1m]))", selector)
+	inSeries, err := s.queryMetricSeries(ctx, config, inQuery, start, end, step)
+	if err != nil {
+		logger.Error("查询Pod入站PPS失败", "error", err)
+		inSeries = &models.MetricSeries{Current: 0, Series: []models.DataPoint{}}
+	}
+
+	// 查询出站PPS
+	outQuery := fmt.Sprintf("sum(rate(container_network_transmit_packets_total{%s}[1m]))", selector)
+	outSeries, err := s.queryMetricSeries(ctx, config, outQuery, start, end, step)
+	if err != nil {
+		logger.Error("查询Pod出站PPS失败", "error", err)
+		outSeries = &models.MetricSeries{Current: 0, Series: []models.DataPoint{}}
+	}
+
+	return &models.NetworkPPS{
+		In:  inSeries,
+		Out: outSeries,
+	}, nil
+}
+
+// queryPodNetworkDrops 查询 Pod 网卡丢包情况
+func (s *PrometheusService) queryPodNetworkDrops(ctx context.Context, config *models.MonitoringConfig, selector string, start, end int64, step string) (*models.NetworkDrops, error) {
+	// 查询接收丢包
+	receiveQuery := fmt.Sprintf("sum(rate(container_network_receive_packets_dropped_total{%s}[1m]))", selector)
+	receiveSeries, err := s.queryMetricSeries(ctx, config, receiveQuery, start, end, step)
+	if err != nil {
+		logger.Error("查询Pod接收丢包失败", "error", err)
+		receiveSeries = &models.MetricSeries{Current: 0, Series: []models.DataPoint{}}
+	}
+
+	// 查询发送丢包
+	transmitQuery := fmt.Sprintf("sum(rate(container_network_transmit_packets_dropped_total{%s}[1m]))", selector)
+	transmitSeries, err := s.queryMetricSeries(ctx, config, transmitQuery, start, end, step)
+	if err != nil {
+		logger.Error("查询Pod发送丢包失败", "error", err)
+		transmitSeries = &models.MetricSeries{Current: 0, Series: []models.DataPoint{}}
+	}
+
+	return &models.NetworkDrops{
+		Receive:  receiveSeries,
+		Transmit: transmitSeries,
+	}, nil
+}
+
+// queryPodDiskIOPS 查询 Pod 磁盘IOPS
+func (s *PrometheusService) queryPodDiskIOPS(ctx context.Context, config *models.MonitoringConfig, selector string, start, end int64, step string) (*models.DiskIOPS, error) {
+	// 查询读IOPS
+	readQuery := fmt.Sprintf("sum(rate(container_fs_reads_total{%s}[1m]))", selector)
+	readSeries, err := s.queryMetricSeries(ctx, config, readQuery, start, end, step)
+	if err != nil {
+		logger.Error("查询Pod磁盘读IOPS失败", "error", err)
+		readSeries = &models.MetricSeries{Current: 0, Series: []models.DataPoint{}}
+	}
+
+	// 查询写IOPS
+	writeQuery := fmt.Sprintf("sum(rate(container_fs_writes_total{%s}[1m]))", selector)
+	writeSeries, err := s.queryMetricSeries(ctx, config, writeQuery, start, end, step)
+	if err != nil {
+		logger.Error("查询Pod磁盘写IOPS失败", "error", err)
+		writeSeries = &models.MetricSeries{Current: 0, Series: []models.DataPoint{}}
+	}
+
+	return &models.DiskIOPS{
+		Read:  readSeries,
+		Write: writeSeries,
+	}, nil
+}
+
+// queryPodDiskThroughput 查询 Pod 磁盘吞吐量
+func (s *PrometheusService) queryPodDiskThroughput(ctx context.Context, config *models.MonitoringConfig, selector string, start, end int64, step string) (*models.DiskThroughput, error) {
+	// 查询读吞吐量
+	readQuery := fmt.Sprintf("sum(rate(container_fs_reads_bytes_total{container!=\"\",container!=\"POD\",%s}[1m]))", selector)
+	readSeries, err := s.queryMetricSeries(ctx, config, readQuery, start, end, step)
+	if err != nil {
+		logger.Error("查询Pod磁盘读吞吐量失败", "error", err)
+		readSeries = &models.MetricSeries{Current: 0, Series: []models.DataPoint{}}
+	}
+
+	// 查询写吞吐量
+	writeQuery := fmt.Sprintf("sum(rate(container_fs_writes_bytes_total{container!=\"\",container!=\"POD\",%s}[1m]))", selector)
+	writeSeries, err := s.queryMetricSeries(ctx, config, writeQuery, start, end, step)
+	if err != nil {
+		logger.Error("查询Pod磁盘写吞吐量失败", "error", err)
+		writeSeries = &models.MetricSeries{Current: 0, Series: []models.DataPoint{}}
+	}
+
+	return &models.DiskThroughput{
+		Read:  readSeries,
+		Write: writeSeries,
+	}, nil
+}
+
+/** genAI_main_end */
