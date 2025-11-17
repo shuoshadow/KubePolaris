@@ -24,6 +24,7 @@ import ConfigMapEdit from './pages/config/ConfigMapEdit';
 import SecretEdit from './pages/config/SecretEdit';
 import ConfigMapCreate from './pages/config/ConfigMapCreate';
 import SecretCreate from './pages/config/SecretCreate';
+import { NamespaceList, NamespaceDetail } from './pages/namespace';
 import './App.css';
 /** genAI_main_end */
 
@@ -55,6 +56,11 @@ const App: React.FC = () => {
               <Route path="workloads" element={<WorkloadList />} />
               <Route path="workloads/:type/:namespace/:name" element={<WorkloadDetail />} />
               <Route path="search" element={<GlobalSearch />} />
+              {/* 命名空间路由 */}
+              {/* genAI_main_start */}
+              <Route path="clusters/:clusterId/namespaces" element={<NamespaceList />} />
+              <Route path="clusters/:clusterId/namespaces/:namespace" element={<NamespaceDetail />} />
+              {/* genAI_main_end */}
               {/* 配置与密钥路由 */}
               <Route path="clusters/:clusterId/configs" element={<ConfigSecretManagement />} />
               {/* genAI_main_start */}

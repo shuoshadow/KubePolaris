@@ -97,7 +97,16 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 				cluster.GET("/events", clusterHandler.GetClusterEvents)
 				cluster.DELETE("", clusterHandler.DeleteCluster)
 				/** genAI_main_start */
-				cluster.GET("/namespaces", clusterHandler.GetNamespaces)
+
+				// namespaces 子分组
+				namespaceHandler := handlers.NewNamespaceHandler(clusterSvc, k8sMgr)
+				namespaces := cluster.Group("/namespaces")
+				{
+					namespaces.GET("", namespaceHandler.GetNamespaces)
+					namespaces.GET("/:namespace", namespaceHandler.GetNamespaceDetail)
+					namespaces.POST("", namespaceHandler.CreateNamespace)
+					namespaces.DELETE("/:namespace", namespaceHandler.DeleteNamespace)
+				}
 				/** genAI_main_end */
 
 				// monitoring 子分组
