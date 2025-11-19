@@ -184,6 +184,41 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 					secrets.PUT("/:namespace/:name", secretHandler.UpdateSecret)
 					secrets.DELETE("/:namespace/:name", secretHandler.DeleteSecret)
 				}
+
+				/** genAI_main_start */
+				// services 子分组
+				serviceHandler := handlers.NewServiceHandler(db, cfg, clusterSvc, k8sMgr)
+				services := cluster.Group("/services")
+				{
+					services.GET("", serviceHandler.ListServices)
+					/** genAI_main_start */
+					services.GET("/namespaces", serviceHandler.GetServiceNamespaces)
+					/** genAI_main_end */
+					services.POST("", serviceHandler.CreateService)
+					services.GET("/:namespace/:name", serviceHandler.GetService)
+					services.PUT("/:namespace/:name", serviceHandler.UpdateService)
+					services.GET("/:namespace/:name/yaml", serviceHandler.GetServiceYAML)
+					services.GET("/:namespace/:name/endpoints", serviceHandler.GetServiceEndpoints)
+					services.DELETE("/:namespace/:name", serviceHandler.DeleteService)
+				}
+				/** genAI_main_end */
+
+				/** genAI_main_start */
+				// ingresses 子分组
+				ingressHandler := handlers.NewIngressHandler(db, cfg, clusterSvc, k8sMgr)
+				ingresses := cluster.Group("/ingresses")
+				{
+					ingresses.GET("", ingressHandler.ListIngresses)
+					/** genAI_main_start */
+					ingresses.GET("/namespaces", ingressHandler.GetIngressNamespaces)
+					/** genAI_main_end */
+					ingresses.POST("", ingressHandler.CreateIngress)
+					ingresses.GET("/:namespace/:name", ingressHandler.GetIngress)
+					ingresses.PUT("/:namespace/:name", ingressHandler.UpdateIngress)
+					ingresses.GET("/:namespace/:name/yaml", ingressHandler.GetIngressYAML)
+					ingresses.DELETE("/:namespace/:name", ingressHandler.DeleteIngress)
+				}
+				/** genAI_main_end */
 				/** genAI_main_end */
 			}
 		}

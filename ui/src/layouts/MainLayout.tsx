@@ -142,6 +142,7 @@ const MainLayout: React.FC = () => {
     return [];
   };
 
+  /** genAI_main_start */
   const getSelectedKeys = () => {
     const path = location.pathname;
     
@@ -149,6 +150,7 @@ const MainLayout: React.FC = () => {
     if (path.match(/\/clusters\/[^/]+\/overview/)) return ['cluster-overview'];
     if (path.match(/\/clusters\/[^/]+\/workloads/)) return ['k8s-workloads'];
     if (path.match(/\/clusters\/[^/]+\/pods/)) return ['k8s-pods'];
+    if (path.match(/\/clusters\/[^/]+\/network/)) return ['k8s-network'];
     if (path.match(/\/clusters\/[^/]+\/services/)) return ['k8s-services'];
     if (path.match(/\/clusters\/[^/]+\/storage/)) return ['k8s-storage'];
     if (path.match(/\/clusters\/[^/]+\/configs/)) return ['k8s-configs'];
@@ -168,6 +170,7 @@ const MainLayout: React.FC = () => {
     
     return ['overview'];
   };
+  /** genAI_main_end */
 
   // 主页面侧边栏菜单
   const mainMenuItems: MenuItem[] = [
@@ -226,17 +229,19 @@ const MainLayout: React.FC = () => {
             }
           },
         },
+        /** genAI_main_start */
         {
-          key: 'k8s-services',
+          key: 'k8s-network',
           icon: <ApiOutlined />,
-          label: '服务',
+          label: '服务与路由',
           onClick: () => {
             const clusterMatch = location.pathname.match(/\/clusters\/([^/]+)/);
             if (clusterMatch) {
-              navigate(`/clusters/${clusterMatch[1]}/services`);
+              navigate(`/clusters/${clusterMatch[1]}/network?tab=service`);
             }
           },
         },
+        /** genAI_main_end */
         {
           key: 'k8s-storage',
           icon: <HddOutlined />,

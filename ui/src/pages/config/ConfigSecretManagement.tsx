@@ -1,7 +1,6 @@
 /** genAI_main_start */
 import React, { useState } from 'react';
 import { Card, Tabs } from 'antd';
-import { FileTextOutlined, LockOutlined } from '@ant-design/icons';
 import ConfigMapList from './ConfigMapList';
 import SecretList from './SecretList';
 import type { TabsProps } from 'antd';
@@ -12,39 +11,23 @@ const ConfigSecretManagement: React.FC = () => {
   const items: TabsProps['items'] = [
     {
       key: 'configmap',
-      label: (
-        <span>
-          <FileTextOutlined />
-          配置项
-        </span>
-      ),
+      label: '配置项（ConfigMap）',
       children: <ConfigMapList />,
     },
     {
       key: 'secret',
-      label: (
-        <span>
-          <LockOutlined />
-          密钥
-        </span>
-      ),
+      label: '密钥（Secret）',
       children: <SecretList />,
     },
   ];
 
   return (
     <div style={{ padding: '24px' }}>
-      <Card
-        title="配置与密钥管理"
-        bordered={false}
-        style={{ minHeight: 'calc(100vh - 150px)' }}
-      >
+      <Card bordered={false}>
         <Tabs
           activeKey={activeKey}
           onChange={setActiveKey}
           items={items}
-          size="large"
-          type="card"
         />
       </Card>
     </div>

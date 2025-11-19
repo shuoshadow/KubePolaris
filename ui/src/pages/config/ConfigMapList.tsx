@@ -9,7 +9,6 @@ import {
   message,
   Modal,
   Select,
-  Card,
   Tooltip,
   Popconfirm,
 } from 'antd';
@@ -249,31 +248,23 @@ const ConfigMapList: React.FC = () => {
   };
 
   return (
-    <Card
-      title="配置项 (ConfigMap)"
-      extra={
+    <div>
+      {/* 筛选和搜索栏 */}
+      <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={loadConfigMaps}>
-            刷新
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => navigate(`/clusters/${clusterId}/configs/configmap/create`)}
-          >
-            创建配置项
-          </Button>
-        </Space>
-      }
-    >
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
-        {/* 搜索和过滤栏 */}
-        <Space style={{ width: '100%' }} size="middle">
           <Select
-            style={{ width: 200 }}
             placeholder="选择命名空间"
+            style={{ width: 180 }}
             value={selectedNamespace}
             onChange={setSelectedNamespace}
+            showSearch
+            filterOption={(input, option) => {
+              const text = String(option?.children || '');
+              return text.toLowerCase().includes(input.toLowerCase());
+            }}
+            allowClear
+            onClear={() => setSelectedNamespace('_all_')}
+            popupClassName="namespace-select-dropdown"
           >
             <Option value="_all_">所有命名空间</Option>
             {namespaces.map((ns) => (
@@ -282,11 +273,17 @@ const ConfigMapList: React.FC = () => {
               </Option>
             ))}
           </Select>
+          <style>{`
+            .namespace-select-dropdown .ant-select-item-option-content {
+              white-space: normal;
+              word-break: break-word;
+            }
+          `}</style>
 
           <Search
-            placeholder="搜索ConfigMap名称"
+            placeholder="搜索ConfigMap名称..."
             allowClear
-            style={{ width: 300 }}
+            style={{ width: 250 }}
             value={searchName}
             onChange={(e) => setSearchName(e.target.value)}
             onSearch={handleSearch}
@@ -300,37 +297,44 @@ const ConfigMapList: React.FC = () => {
           )}
         </Space>
 
-        {/* 统计信息 */}
-        <div>
-          <Space>
-            <span>总数: {total}</span>
-            {selectedRowKeys.length > 0 && <span>已选: {selectedRowKeys.length}</span>}
-          </Space>
-        </div>
-
-        {/* 表格 */}
-        <Table
-          rowSelection={rowSelection}
-          columns={columns}
-          dataSource={configMaps}
-          loading={loading}
-          rowKey={(record) => `${record.namespace}/${record.name}`}
-          pagination={{
-            current: page,
-            pageSize: pageSize,
-            total: total,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 项`,
-            onChange: (page, pageSize) => {
-              setPage(page);
-              setPageSize(pageSize);
-            },
-          }}
-          scroll={{ x: 1200 }}
-        />
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => navigate(`/clusters/${clusterId}/configs/configmap/create`)}
+          >
+            创建ConfigMap
+          </Button>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={loadConfigMaps}
+          >
+            刷新
+          </Button>
+        </Space>
       </Space>
-    </Card>
+
+      {/* 表格 */}
+      <Table
+        rowSelection={rowSelection}
+        columns={columns}
+        dataSource={configMaps}
+        loading={loading}
+        rowKey={(record) => `${record.namespace}/${record.name}`}
+        pagination={{
+          current: page,
+          pageSize: pageSize,
+          total: total,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total) => `共 ${total} 个配置项`,
+          onChange: (page, pageSize) => {
+            setPage(page);
+            setPageSize(pageSize);
+          },
+        }}
+        scroll={{ x: 1200 }}
+      />
+    </div>
   );
 };
 

@@ -25,6 +25,7 @@ import SecretEdit from './pages/config/SecretEdit';
 import ConfigMapCreate from './pages/config/ConfigMapCreate';
 import SecretCreate from './pages/config/SecretCreate';
 import { NamespaceList, NamespaceDetail } from './pages/namespace';
+import NetworkList from './pages/network/NetworkList';
 import './App.css';
 /** genAI_main_end */
 
@@ -76,6 +77,10 @@ const App: React.FC = () => {
               <Route path="clusters/:clusterId/configs/secret/:namespace/:name" element={<SecretDetail />} />
               {/* genAI_main_start */}
               <Route path="clusters/:clusterId/configs/secret/:namespace/:name/edit" element={<SecretEdit />} />
+              {/* genAI_main_end */}
+              {/* 网络管理路由（Service和Ingress） */}
+              {/* genAI_main_start */}
+              <Route path="clusters/:clusterId/network" element={<NetworkList />} />
               {/* genAI_main_end */}
             </Route>
           </Routes>

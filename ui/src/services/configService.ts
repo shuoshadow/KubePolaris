@@ -57,14 +57,24 @@ export interface ListResponse<T> {
 }
 
 /** genAI_main_start */
+// 命名空间对象接口
+interface NamespaceObject {
+  name: string;
+  status: string;
+  labels: Record<string, string>;
+  annotations: Record<string, string>;
+  creationTimestamp: string;
+}
+
 // 获取命名空间列表（通用）
 export const getNamespaces = async (clusterId: number): Promise<string[]> => {
   try {
     // 直接使用集群的命名空间接口
-    const response = await request.get<string[]>(
+    const response = await request.get<NamespaceObject[]>(
       `/clusters/${clusterId}/namespaces`
     );
-    return response.data;
+    // 提取命名空间名称数组
+    return response.data.map((ns) => ns.name);
   } catch (error) {
     console.error('获取命名空间列表失败:', error);
     // 返回默认命名空间

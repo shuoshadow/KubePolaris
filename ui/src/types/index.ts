@@ -237,3 +237,99 @@ export interface K8sEvent {
   eventTime?: string;
   count?: number;
 }
+
+/** genAI_main_start */
+// Service相关类型定义
+export interface ServicePort {
+  name: string;
+  protocol: string;
+  port: number;
+  targetPort: string;
+  nodePort?: number;
+}
+
+export interface LoadBalancerIngress {
+  ip?: string;
+  hostname?: string;
+}
+
+export interface Service {
+  name: string;
+  namespace: string;
+  type: 'ClusterIP' | 'NodePort' | 'LoadBalancer' | 'ExternalName';
+  clusterIP: string;
+  externalIPs?: string[];
+  ports: ServicePort[];
+  selector: Record<string, string>;
+  sessionAffinity: string;
+  loadBalancerIP?: string;
+  loadBalancerIngress?: LoadBalancerIngress[];
+  externalName?: string;
+  createdAt: string;
+  labels: Record<string, string>;
+  annotations: Record<string, string>;
+}
+
+// Ingress相关类型定义
+export interface IngressPathInfo {
+  path: string;
+  pathType: string;
+  serviceName: string;
+  servicePort: string;
+}
+
+export interface IngressRuleInfo {
+  host: string;
+  paths: IngressPathInfo[];
+}
+
+export interface IngressTLSInfo {
+  hosts: string[];
+  secretName: string;
+}
+
+export interface LoadBalancerStatus {
+  ip?: string;
+  hostname?: string;
+}
+
+export interface Ingress {
+  name: string;
+  namespace: string;
+  ingressClassName?: string;
+  rules: IngressRuleInfo[];
+  tls?: IngressTLSInfo[];
+  loadBalancer?: LoadBalancerStatus[];
+  createdAt: string;
+  labels: Record<string, string>;
+  annotations: Record<string, string>;
+}
+
+// Endpoints相关类型定义
+export interface EndpointAddress {
+  ip: string;
+  nodeName?: string;
+  targetRef?: {
+    kind: string;
+    name: string;
+    namespace: string;
+  };
+}
+
+export interface EndpointPort {
+  name: string;
+  port: number;
+  protocol: string;
+}
+
+export interface EndpointSubset {
+  addresses: EndpointAddress[];
+  ports: EndpointPort[];
+}
+
+export interface Endpoints {
+  name: string;
+  namespace: string;
+  subsets: EndpointSubset[];
+}
+/** genAI_main_end */
