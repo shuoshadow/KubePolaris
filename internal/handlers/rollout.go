@@ -678,4 +678,541 @@ func (h *RolloutHandler) applyYAML(ctx context.Context, k8sClient *services.K8sC
 	return result, nil
 }
 
+/** genAI_main_start */
+// GetRolloutPods 获取Rollout关联的Pods
+func (h *RolloutHandler) GetRolloutPods(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Rollout关联的Pods: %s/%s/%s", clusterId, namespace, name)
+
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 获取Rollout
+	rolloutClient, err := k8sClient.GetRolloutClient()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Rollout客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	rollout, err := rolloutClient.ArgoprojV1alpha1().Rollouts(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "Rollout不存在: " + err.Error(),
+		})
+		return
+	}
+
+	// 获取关联的Pods
+	clientset := k8sClient.GetClientset()
+	podList, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: metav1.FormatLabelSelector(rollout.Spec.Selector),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Pods失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 转换Pod信息
+	pods := make([]map[string]interface{}, 0, len(podList.Items))
+	for _, pod := range podList.Items {
+		podInfo := map[string]interface{}{
+			"name":         pod.Name,
+			"namespace":    pod.Namespace,
+			"phase":        string(pod.Status.Phase),
+			"nodeName":     pod.Spec.NodeName,
+			"nodeIP":       pod.Status.HostIP,
+			"podIP":        pod.Status.PodIP,
+			"restartCount": 0,
+			"createdAt":    pod.CreationTimestamp.Time,
+		}
+
+		// 计算重启次数和提取资源限制
+		var totalRestarts int32
+		var cpuRequest, cpuLimit, memoryRequest, memoryLimit string
+		for _, container := range pod.Spec.Containers {
+			// 资源限制
+			if container.Resources.Requests != nil {
+				if cpu, ok := container.Resources.Requests["cpu"]; ok {
+					cpuRequest = cpu.String()
+				}
+				if mem, ok := container.Resources.Requests["memory"]; ok {
+					memoryRequest = mem.String()
+				}
+			}
+			if container.Resources.Limits != nil {
+				if cpu, ok := container.Resources.Limits["cpu"]; ok {
+					cpuLimit = cpu.String()
+				}
+				if mem, ok := container.Resources.Limits["memory"]; ok {
+					memoryLimit = mem.String()
+				}
+			}
+		}
+
+		// 统计重启次数
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			totalRestarts += containerStatus.RestartCount
+		}
+
+		podInfo["restartCount"] = totalRestarts
+		podInfo["cpuRequest"] = cpuRequest
+		podInfo["cpuLimit"] = cpuLimit
+		podInfo["memoryRequest"] = memoryRequest
+		podInfo["memoryLimit"] = memoryLimit
+
+		pods = append(pods, podInfo)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"items": pods,
+			"total": len(pods),
+		},
+	})
+}
+
+// GetRolloutServices 获取Rollout关联的Services
+func (h *RolloutHandler) GetRolloutServices(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Rollout关联的Services: %s/%s/%s", clusterId, namespace, name)
+
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 获取Rollout
+	rolloutClient, err := k8sClient.GetRolloutClient()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Rollout客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	rollout, err := rolloutClient.ArgoprojV1alpha1().Rollouts(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "Rollout不存在: " + err.Error(),
+		})
+		return
+	}
+
+	// 获取所有Services
+	clientset := k8sClient.GetClientset()
+	serviceList, err := clientset.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Services失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 筛选匹配的Services
+	rolloutLabels := rollout.Spec.Selector.MatchLabels
+	matchedServices := make([]map[string]interface{}, 0)
+	for _, svc := range serviceList.Items {
+		// 检查Service的selector是否匹配Rollout的labels
+		matches := true
+		for key, value := range svc.Spec.Selector {
+			if rolloutLabels[key] != value {
+				matches = false
+				break
+			}
+		}
+
+		if matches {
+			ports := make([]map[string]interface{}, 0, len(svc.Spec.Ports))
+			for _, port := range svc.Spec.Ports {
+				ports = append(ports, map[string]interface{}{
+					"name":       port.Name,
+					"protocol":   port.Protocol,
+					"port":       port.Port,
+					"targetPort": port.TargetPort.String(),
+					"nodePort":   port.NodePort,
+				})
+			}
+
+			serviceInfo := map[string]interface{}{
+				"name":        svc.Name,
+				"namespace":   svc.Namespace,
+				"type":        string(svc.Spec.Type),
+				"clusterIP":   svc.Spec.ClusterIP,
+				"externalIPs": svc.Spec.ExternalIPs,
+				"ports":       ports,
+				"selector":    svc.Spec.Selector,
+				"createdAt":   svc.CreationTimestamp.Time,
+			}
+			matchedServices = append(matchedServices, serviceInfo)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"items": matchedServices,
+			"total": len(matchedServices),
+		},
+	})
+}
+
+// GetRolloutIngresses 获取Rollout关联的Ingresses
+func (h *RolloutHandler) GetRolloutIngresses(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+
+	logger.Info("获取Rollout关联的Ingresses: %s/%s", clusterId, namespace)
+
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 获取Ingresses
+	clientset := k8sClient.GetClientset()
+	ingressList, err := clientset.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Ingresses失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 转换Ingress信息
+	ingresses := make([]map[string]interface{}, 0, len(ingressList.Items))
+	for _, ingress := range ingressList.Items {
+		rules := make([]map[string]interface{}, 0, len(ingress.Spec.Rules))
+		for _, rule := range ingress.Spec.Rules {
+			paths := make([]map[string]interface{}, 0)
+			if rule.HTTP != nil {
+				for _, path := range rule.HTTP.Paths {
+					paths = append(paths, map[string]interface{}{
+						"path":     path.Path,
+						"pathType": string(*path.PathType),
+						"backend": map[string]interface{}{
+							"serviceName": path.Backend.Service.Name,
+							"servicePort": path.Backend.Service.Port.Number,
+						},
+					})
+				}
+			}
+			rules = append(rules, map[string]interface{}{
+				"host":  rule.Host,
+				"paths": paths,
+			})
+		}
+
+		ingressInfo := map[string]interface{}{
+			"name":             ingress.Name,
+			"namespace":        ingress.Namespace,
+			"ingressClassName": ingress.Spec.IngressClassName,
+			"rules":            rules,
+			"createdAt":        ingress.CreationTimestamp.Time,
+		}
+		ingresses = append(ingresses, ingressInfo)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"items": ingresses,
+			"total": len(ingresses),
+		},
+	})
+}
+
+// GetRolloutHPA 获取Rollout关联的HPA
+func (h *RolloutHandler) GetRolloutHPA(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Rollout关联的HPA: %s/%s/%s", clusterId, namespace, name)
+
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	clientset := k8sClient.GetClientset()
+	hpaList, err := clientset.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取HPA失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 查找与Rollout关联的HPA
+	var targetHPA interface{}
+	for _, hpa := range hpaList.Items {
+		if hpa.Spec.ScaleTargetRef.Kind == "Rollout" && hpa.Spec.ScaleTargetRef.Name == name {
+			targetHPA = hpa
+			break
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data":    targetHPA,
+	})
+}
+
+// GetRolloutReplicaSets 获取Rollout关联的ReplicaSets
+func (h *RolloutHandler) GetRolloutReplicaSets(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Rollout关联的ReplicaSets: %s/%s/%s", clusterId, namespace, name)
+
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 获取Rollout
+	rolloutClient, err := k8sClient.GetRolloutClient()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Rollout客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	_, err = rolloutClient.ArgoprojV1alpha1().Rollouts(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "Rollout不存在: " + err.Error(),
+		})
+		return
+	}
+
+	clientset := k8sClient.GetClientset()
+	replicaSets, err := clientset.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取ReplicaSets失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 筛选由Rollout管理的ReplicaSets
+	var relatedReplicaSets []interface{}
+	for _, rs := range replicaSets.Items {
+		for _, ownerRef := range rs.OwnerReferences {
+			if ownerRef.Kind == "Rollout" && ownerRef.Name == name {
+				relatedReplicaSets = append(relatedReplicaSets, rs)
+				break
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data":    relatedReplicaSets,
+	})
+}
+
+// GetRolloutEvents 获取Rollout相关的Events
+func (h *RolloutHandler) GetRolloutEvents(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Rollout相关的Events: %s/%s/%s", clusterId, namespace, name)
+
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	clientset := k8sClient.GetClientset()
+	events, err := clientset.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s,involvedObject.kind=Rollout", name),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Events失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data":    events,
+	})
+}
+
+/** genAI_main_end */
+
 /** genAI_main_end */

@@ -16,6 +16,10 @@ import PodTerminal from './pages/pod/PodTerminal';
 import WorkloadList from './pages/workload/WorkloadList';
 import WorkloadDetail from './pages/workload/WorkloadDetail';
 import DeploymentCreate from './pages/workload/DeploymentCreate';
+/** genAI_main_start */
+import DeploymentDetail from './pages/workload/DeploymentDetail';
+import RolloutDetail from './pages/workload/RolloutDetail';
+/** genAI_main_end */
 import YAMLEditor from './pages/yaml/YAMLEditor';
 import GlobalSearch from './pages/search/GlobalSearch';
 import KubectlTerminalPage from './pages/terminal/kubectlTerminal';
@@ -54,6 +58,10 @@ const App: React.FC = () => {
               <Route path="clusters/:clusterId/pods/:namespace/:name" element={<PodDetail />} />
               <Route path="clusters/:clusterId/workloads" element={<WorkloadList />} />
               <Route path="clusters/:clusterId/workloads/create" element={<DeploymentCreate />} />
+              /** genAI_main_start */
+              <Route path="clusters/:clusterId/workloads/deployment/:namespace/:name" element={<DeploymentDetail />} />
+              <Route path="clusters/:clusterId/workloads/rollout/:namespace/:name" element={<RolloutDetail />} />
+              /** genAI_main_end */
               <Route path="clusters/:clusterId/workloads/:namespace/:name" element={<WorkloadDetail />} />
               <Route path="clusters/:clusterId/yaml/apply" element={<YAMLEditor />} />
               <Route path="workloads" element={<WorkloadList />} />

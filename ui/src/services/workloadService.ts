@@ -169,12 +169,12 @@ export class WorkloadService {
   // 获取工作负载详情
   static async getWorkloadDetail(
     clusterId: string,
+    workloadType: string,
     namespace: string,
-    name: string,
-    type: string
+    name: string
   ): Promise<WorkloadDetailResponse> {
     let endpoint = `/clusters/${clusterId}/`;
-    switch (type) {
+    switch (workloadType) {
       case 'Deployment':
         endpoint += `deployments/${namespace}/${name}`;
         break;
@@ -185,16 +185,16 @@ export class WorkloadService {
         endpoint += `statefulsets/${namespace}/${name}`;
         break;
       case 'DaemonSet':
-        endpoint += `daemonsets/${namespace}/${name}?type=${type}`;
+        endpoint += `daemonsets/${namespace}/${name}?type=${workloadType}`;
         break;
       case 'Job':
-        endpoint += `jobs/${namespace}/${name}?type=${type}`;
+        endpoint += `jobs/${namespace}/${name}?type=${workloadType}`;
         break;
       case 'CronJob':
-        endpoint += `cronjobs/${namespace}/${name}?type=${type}`;
+        endpoint += `cronjobs/${namespace}/${name}?type=${workloadType}`;
         break;
       default:
-        endpoint += `workloads/${namespace}/${name}?type=${type}`;
+        endpoint += `workloads/${namespace}/${name}?type=${workloadType}`;
     }
     return request.get(endpoint);
   }
@@ -642,5 +642,145 @@ ${container.resources ? `            resources:\n${container.resources.requests 
 
     return yaml;
   }
+  
+  /** genAI_main_start */
+  // 获取Deployment关联的Pods
+  static async getWorkloadPods(
+    clusterId: string,
+    namespace: string,
+    workloadType: string,
+    workloadName: string
+  ): Promise<any> {
+    let endpoint = `/clusters/${clusterId}/`;
+    switch (workloadType) {
+      case 'Deployment':
+        endpoint += `deployments/${namespace}/${workloadName}/pods`;
+        break;
+      /** genAI_main_start */
+      case 'Rollout':
+        endpoint += `rollouts/${namespace}/${workloadName}/pods`;
+        break;
+      /** genAI_main_end */
+      default:
+        endpoint += `workloads/${workloadType}/${namespace}/${workloadName}/pods`;
+    }
+    return request.get(endpoint);
+  }
+
+  // 获取Deployment关联的Services
+  static async getWorkloadServices(
+    clusterId: string,
+    namespace: string,
+    workloadType: string,
+    workloadName: string
+  ): Promise<any> {
+    let endpoint = `/clusters/${clusterId}/`;
+    switch (workloadType) {
+      case 'Deployment':
+        endpoint += `deployments/${namespace}/${workloadName}/services`;
+        break;
+      /** genAI_main_start */
+      case 'Rollout':
+        endpoint += `rollouts/${namespace}/${workloadName}/services`;
+        break;
+      /** genAI_main_end */
+      default:
+        endpoint += `workloads/${workloadType}/${namespace}/${workloadName}/services`;
+    }
+    return request.get(endpoint);
+  }
+
+  // 获取Deployment关联的Ingresses
+  static async getWorkloadIngresses(
+    clusterId: string,
+    namespace: string,
+    workloadType: string,
+    workloadName: string
+  ): Promise<any> {
+    let endpoint = `/clusters/${clusterId}/`;
+    switch (workloadType) {
+      case 'Deployment':
+        endpoint += `deployments/${namespace}/${workloadName}/ingresses`;
+        break;
+      /** genAI_main_start */
+      case 'Rollout':
+        endpoint += `rollouts/${namespace}/${workloadName}/ingresses`;
+        break;
+      /** genAI_main_end */
+      default:
+        endpoint += `workloads/${workloadType}/${namespace}/${workloadName}/ingresses`;
+    }
+    return request.get(endpoint);
+  }
+
+  // 获取Deployment的HPA
+  static async getWorkloadHPA(
+    clusterId: string,
+    namespace: string,
+    workloadType: string,
+    workloadName: string
+  ): Promise<any> {
+    /** genAI_main_start */
+    let endpoint = `/clusters/${clusterId}/`;
+    switch (workloadType) {
+      case 'Deployment':
+        endpoint += `deployments/${namespace}/${workloadName}/hpa`;
+        break;
+      case 'Rollout':
+        endpoint += `rollouts/${namespace}/${workloadName}/hpa`;
+        break;
+      default:
+        endpoint += `workloads/${workloadType}/${namespace}/${workloadName}/hpa`;
+    }
+    return request.get(endpoint);
+    /** genAI_main_end */
+  }
+
+  // 获取Deployment的ReplicaSets
+  static async getWorkloadReplicaSets(
+    clusterId: string,
+    namespace: string,
+    workloadType: string,
+    workloadName: string
+  ): Promise<any> {
+    /** genAI_main_start */
+    let endpoint = `/clusters/${clusterId}/`;
+    switch (workloadType) {
+      case 'Deployment':
+        endpoint += `deployments/${namespace}/${workloadName}/replicasets`;
+        break;
+      case 'Rollout':
+        endpoint += `rollouts/${namespace}/${workloadName}/replicasets`;
+        break;
+      default:
+        endpoint += `workloads/${workloadType}/${namespace}/${workloadName}/replicasets`;
+    }
+    return request.get(endpoint);
+    /** genAI_main_end */
+  }
+
+  // 获取Deployment的Events
+  static async getWorkloadEvents(
+    clusterId: string,
+    namespace: string,
+    workloadType: string,
+    workloadName: string
+  ): Promise<any> {
+    let endpoint = `/clusters/${clusterId}/`;
+    switch (workloadType) {
+      case 'Deployment':
+        endpoint += `deployments/${namespace}/${workloadName}/events`;
+        break;
+      /** genAI_main_start */
+      case 'Rollout':
+        endpoint += `rollouts/${namespace}/${workloadName}/events`;
+        break;
+      /** genAI_main_end */
+      default:
+        endpoint += `workloads/${workloadType}/${namespace}/${workloadName}/events`;
+    }
+    return request.get(endpoint);
+  }
+  /** genAI_main_end */
   /** genAI_main_end */
 }

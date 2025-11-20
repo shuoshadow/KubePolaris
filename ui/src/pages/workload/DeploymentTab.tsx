@@ -64,7 +64,7 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ clusterId, onCountChange 
   const [searchConditions, setSearchConditions] = useState<SearchCondition[]>([]);
   const [currentSearchField, setCurrentSearchField] = useState<'name' | 'namespace' | 'image' | 'status' | 'cpuLimit' | 'cpuRequest' | 'memoryLimit' | 'memoryRequest'>('name');
   const [currentSearchValue, setCurrentSearchValue] = useState('');
-  
+
   // 列设置状态
   const [columnSettingsVisible, setColumnSettingsVisible] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
@@ -254,13 +254,13 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ clusterId, onCountChange 
         try {
     const selectedWorkloads = workloads.filter(w => 
             selectedRowKeys.includes(`${w.namespace}/${w.name}`)
-          );
-          
+    );
+    
           // 重新部署：重启所有Pod（通过更新annotation的方式）
           const redeployPromises = selectedWorkloads.map(workload =>
             WorkloadService.restartWorkload(clusterId, workload.namespace, workload.name, workload.type)
-          );
-          
+      );
+      
           const results = await Promise.allSettled(redeployPromises);
       const successCount = results.filter(r => r.status === 'fulfilled').length;
       const failCount = results.length - successCount;
@@ -276,7 +276,7 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ clusterId, onCountChange 
     } catch (error) {
           console.error('批量重新部署失败:', error);
           message.error('批量重新部署失败');
-        }
+    }
       }
     });
   };
@@ -350,7 +350,7 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ clusterId, onCountChange 
 
   // 当搜索条件改变时重置到第一页
   useEffect(() => {
-    setCurrentPage(1);
+      setCurrentPage(1);
   }, [searchConditions]);
 
   // 当allWorkloads、搜索条件、分页参数、排序参数改变时，重新计算显示数据
@@ -368,13 +368,22 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ clusterId, onCountChange 
         
         // 处理 undefined 值
         if (aValue === undefined && bValue === undefined) return 0;
-        if (aValue === undefined) return 1;
-        if (bValue === undefined) return -1;
+        if (aValue === undefined) return sortOrder === 'ascend' ? 1 : -1;
+        if (bValue === undefined) return sortOrder === 'ascend' ? -1 : 1;
+        
+        // 数字类型比较
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortOrder === 'ascend' ? aValue - bValue : bValue - aValue;
+        }
+        
+        // 字符串类型比较
+        const aStr = String(aValue);
+        const bStr = String(bValue);
         
         if (sortOrder === 'ascend') {
-          return aValue > bValue ? 1 : -1;
+          return aStr > bStr ? 1 : aStr < bStr ? -1 : 0;
         } else {
-          return aValue < bValue ? 1 : -1;
+          return bStr > aStr ? 1 : bStr < aStr ? -1 : 0;
         }
       });
     }
@@ -412,10 +421,11 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ clusterId, onCountChange 
       fixed: 'left' as const,
       sorter: true,
       sortOrder: sortField === 'name' ? sortOrder : null,
+      /** genAI_main_start */
       render: (text: string, record: WorkloadInfo) => (
         <Button
           type="link"
-          onClick={() => navigate(`/clusters/${clusterId}/workloads/${record.namespace}/${record.name}?type=${record.type}`)}
+          onClick={() => navigate(`/clusters/${clusterId}/workloads/deployment/${record.namespace}/${record.name}`)}
           style={{ 
             padding: 0, 
             height: 'auto',
@@ -427,6 +437,7 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ clusterId, onCountChange 
             {text}
         </Button>
       ),
+      /** genAI_main_end */
     },
     {
       title: '命名空间',
@@ -456,11 +467,12 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ clusterId, onCountChange 
     },
     {
       title: '实例个数(正常/全部)',
+      dataIndex: 'replicas',
       key: 'replicas',
       width: 150,
       sorter: true,
       sortOrder: sortField === 'replicas' ? sortOrder : null,
-      render: (record: WorkloadInfo) => (
+      render: (_: unknown, record: WorkloadInfo) => (
         <span>
           {record.readyReplicas || 0} / {record.replicas || 0}
         </span>

@@ -157,6 +157,15 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 					deployments.POST("/yaml/apply", deploymentHandler.ApplyYAML)
 					deployments.POST("/:namespace/:name/scale", deploymentHandler.ScaleDeployment)
 					deployments.DELETE("/:namespace/:name", deploymentHandler.DeleteDeployment)
+					/** genAI_main_start */
+					// Deployment详情页相关接口
+					deployments.GET("/:namespace/:name/pods", deploymentHandler.GetDeploymentPods)
+					deployments.GET("/:namespace/:name/services", deploymentHandler.GetDeploymentServices)
+					deployments.GET("/:namespace/:name/ingresses", deploymentHandler.GetDeploymentIngresses)
+					deployments.GET("/:namespace/:name/hpa", deploymentHandler.GetDeploymentHPA)
+					deployments.GET("/:namespace/:name/replicasets", deploymentHandler.GetDeploymentReplicaSets)
+					deployments.GET("/:namespace/:name/events", deploymentHandler.GetDeploymentEvents)
+					/** genAI_main_end */
 				}
 
 				// Rollout 子分组
@@ -167,6 +176,15 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 					rollouts.GET("/namespaces", rolloutHandler.GetRolloutNamespaces)
 					rollouts.GET("/:namespace/:name", rolloutHandler.GetRollout)
 					rollouts.GET("/:namespace/:name/metrics", monitoringHandler.GetWorkloadMetrics)
+					/** genAI_main_start */
+					// Rollout详情相关路由
+					rollouts.GET("/:namespace/:name/pods", rolloutHandler.GetRolloutPods)
+					rollouts.GET("/:namespace/:name/services", rolloutHandler.GetRolloutServices)
+					rollouts.GET("/:namespace/:name/ingresses", rolloutHandler.GetRolloutIngresses)
+					rollouts.GET("/:namespace/:name/hpa", rolloutHandler.GetRolloutHPA)
+					rollouts.GET("/:namespace/:name/replicasets", rolloutHandler.GetRolloutReplicaSets)
+					rollouts.GET("/:namespace/:name/events", rolloutHandler.GetRolloutEvents)
+					/** genAI_main_end */
 					rollouts.POST("/yaml/apply", rolloutHandler.ApplyYAML)
 					rollouts.POST("/:namespace/:name/scale", rolloutHandler.ScaleRollout)
 					rollouts.DELETE("/:namespace/:name", rolloutHandler.DeleteRollout)

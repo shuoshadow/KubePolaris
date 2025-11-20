@@ -686,4 +686,614 @@ func (h *DeploymentHandler) applyYAML(ctx context.Context, k8sClient *services.K
 	return result, nil
 }
 
+/** genAI_main_start */
+// GetDeploymentPods 获取Deployment关联的Pods
+func (h *DeploymentHandler) GetDeploymentPods(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Deployment Pods: cluster=%s, namespace=%s, name=%s", clusterId, namespace, name)
+
+	// 获取集群信息
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	clientset := k8sClient.GetClientset()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 获取Deployment
+	deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "Deployment不存在",
+		})
+		return
+	}
+
+	// 使用selector查询Pods
+	selector := labels.SelectorFromSet(deployment.Spec.Selector.MatchLabels)
+	podList, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Pod列表失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 转换Pod信息
+	pods := make([]map[string]interface{}, 0, len(podList.Items))
+	for _, pod := range podList.Items {
+		podInfo := map[string]interface{}{
+			"name":         pod.Name,
+			"namespace":    pod.Namespace,
+			"phase":        string(pod.Status.Phase),
+			"nodeName":     pod.Spec.NodeName,
+			"nodeIP":       pod.Status.HostIP,
+			"podIP":        pod.Status.PodIP,
+			"restartCount": 0,
+			"createdAt":    pod.CreationTimestamp.Time,
+		}
+
+		// 计算重启次数和提取资源限制
+		var totalRestarts int32
+		var cpuRequest, cpuLimit, memoryRequest, memoryLimit string
+		for _, container := range pod.Spec.Containers {
+			// 资源限制
+			if container.Resources.Requests != nil {
+				if cpu, ok := container.Resources.Requests["cpu"]; ok {
+					cpuRequest = cpu.String()
+				}
+				if mem, ok := container.Resources.Requests["memory"]; ok {
+					memoryRequest = mem.String()
+				}
+			}
+			if container.Resources.Limits != nil {
+				if cpu, ok := container.Resources.Limits["cpu"]; ok {
+					cpuLimit = cpu.String()
+				}
+				if mem, ok := container.Resources.Limits["memory"]; ok {
+					memoryLimit = mem.String()
+				}
+			}
+		}
+
+		// 统计重启次数
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			totalRestarts += containerStatus.RestartCount
+		}
+
+		podInfo["restartCount"] = totalRestarts
+		podInfo["cpuRequest"] = cpuRequest
+		podInfo["cpuLimit"] = cpuLimit
+		podInfo["memoryRequest"] = memoryRequest
+		podInfo["memoryLimit"] = memoryLimit
+
+		pods = append(pods, podInfo)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"items": pods,
+			"total": len(pods),
+		},
+	})
+}
+
+// GetDeploymentServices 获取Deployment关联的Services
+func (h *DeploymentHandler) GetDeploymentServices(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Deployment Services: cluster=%s, namespace=%s, name=%s", clusterId, namespace, name)
+
+	// 获取集群信息
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	clientset := k8sClient.GetClientset()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 获取Deployment
+	deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "Deployment不存在",
+		})
+		return
+	}
+
+	// 获取Services
+	serviceList, err := clientset.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Service列表失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 筛选匹配的Services
+	deploymentLabels := deployment.Spec.Selector.MatchLabels
+	matchedServices := make([]map[string]interface{}, 0)
+	for _, svc := range serviceList.Items {
+		// 检查Service的selector是否匹配Deployment的labels
+		matches := true
+		for key, value := range svc.Spec.Selector {
+			if deploymentLabels[key] != value {
+				matches = false
+				break
+			}
+		}
+
+		if matches {
+			ports := make([]map[string]interface{}, 0, len(svc.Spec.Ports))
+			for _, port := range svc.Spec.Ports {
+				ports = append(ports, map[string]interface{}{
+					"name":       port.Name,
+					"protocol":   port.Protocol,
+					"port":       port.Port,
+					"targetPort": port.TargetPort.String(),
+					"nodePort":   port.NodePort,
+				})
+			}
+
+			serviceInfo := map[string]interface{}{
+				"name":        svc.Name,
+				"namespace":   svc.Namespace,
+				"type":        string(svc.Spec.Type),
+				"clusterIP":   svc.Spec.ClusterIP,
+				"externalIPs": svc.Spec.ExternalIPs,
+				"ports":       ports,
+				"selector":    svc.Spec.Selector,
+				"createdAt":   svc.CreationTimestamp.Time,
+			}
+			matchedServices = append(matchedServices, serviceInfo)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"items": matchedServices,
+			"total": len(matchedServices),
+		},
+	})
+}
+
+// GetDeploymentIngresses 获取Deployment关联的Ingresses
+func (h *DeploymentHandler) GetDeploymentIngresses(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Deployment Ingresses: cluster=%s, namespace=%s, name=%s", clusterId, namespace, name)
+
+	// 获取集群信息
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	clientset := k8sClient.GetClientset()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 获取Ingresses
+	ingressList, err := clientset.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Ingress列表失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 转换Ingress信息
+	ingresses := make([]map[string]interface{}, 0, len(ingressList.Items))
+	for _, ingress := range ingressList.Items {
+		rules := make([]map[string]interface{}, 0, len(ingress.Spec.Rules))
+		for _, rule := range ingress.Spec.Rules {
+			paths := make([]map[string]interface{}, 0)
+			if rule.HTTP != nil {
+				for _, path := range rule.HTTP.Paths {
+					paths = append(paths, map[string]interface{}{
+						"path":     path.Path,
+						"pathType": string(*path.PathType),
+						"backend": map[string]interface{}{
+							"serviceName": path.Backend.Service.Name,
+							"servicePort": path.Backend.Service.Port.Number,
+						},
+					})
+				}
+			}
+			rules = append(rules, map[string]interface{}{
+				"host":  rule.Host,
+				"paths": paths,
+			})
+		}
+
+		ingressInfo := map[string]interface{}{
+			"name":             ingress.Name,
+			"namespace":        ingress.Namespace,
+			"ingressClassName": ingress.Spec.IngressClassName,
+			"rules":            rules,
+			"createdAt":        ingress.CreationTimestamp.Time,
+		}
+		ingresses = append(ingresses, ingressInfo)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"items": ingresses,
+			"total": len(ingresses),
+		},
+	})
+}
+
+// GetDeploymentHPA 获取Deployment的HPA
+func (h *DeploymentHandler) GetDeploymentHPA(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Deployment HPA: cluster=%s, namespace=%s, name=%s", clusterId, namespace, name)
+
+	// 获取集群信息
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	clientset := k8sClient.GetClientset()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 获取HPA列表
+	hpaList, err := clientset.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取HPA列表失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 查找匹配的HPA
+	for _, hpa := range hpaList.Items {
+		if hpa.Spec.ScaleTargetRef.Kind == "Deployment" && hpa.Spec.ScaleTargetRef.Name == name {
+			metrics := make([]map[string]interface{}, 0, len(hpa.Spec.Metrics))
+			for _, metric := range hpa.Spec.Metrics {
+				metricInfo := map[string]interface{}{
+					"type": string(metric.Type),
+				}
+				if metric.Resource != nil {
+					metricInfo["resource"] = map[string]interface{}{
+						"name":   metric.Resource.Name,
+						"target": metric.Resource.Target,
+					}
+				}
+				metrics = append(metrics, metricInfo)
+			}
+
+			conditions := make([]map[string]interface{}, 0, len(hpa.Status.Conditions))
+			for _, condition := range hpa.Status.Conditions {
+				conditions = append(conditions, map[string]interface{}{
+					"type":    string(condition.Type),
+					"status":  string(condition.Status),
+					"reason":  condition.Reason,
+					"message": condition.Message,
+				})
+			}
+
+			hpaInfo := map[string]interface{}{
+				"name":            hpa.Name,
+				"namespace":       hpa.Namespace,
+				"minReplicas":     *hpa.Spec.MinReplicas,
+				"maxReplicas":     hpa.Spec.MaxReplicas,
+				"currentReplicas": hpa.Status.CurrentReplicas,
+				"desiredReplicas": hpa.Status.DesiredReplicas,
+				"metrics":         metrics,
+				"conditions":      conditions,
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"code":    200,
+				"message": "success",
+				"data":    hpaInfo,
+			})
+			return
+		}
+	}
+
+	// 未找到HPA
+	c.JSON(http.StatusNotFound, gin.H{
+		"code":    404,
+		"message": "未找到HPA",
+	})
+}
+
+// GetDeploymentReplicaSets 获取Deployment的ReplicaSets
+func (h *DeploymentHandler) GetDeploymentReplicaSets(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Deployment ReplicaSets: cluster=%s, namespace=%s, name=%s", clusterId, namespace, name)
+
+	// 获取集群信息
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	clientset := k8sClient.GetClientset()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 检查Deployment是否存在
+	_, err = clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "Deployment不存在",
+		})
+		return
+	}
+
+	// 获取ReplicaSets
+	rsList, err := clientset.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取ReplicaSet列表失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 筛选匹配的ReplicaSets
+	matchedReplicaSets := make([]map[string]interface{}, 0)
+	for _, rs := range rsList.Items {
+		// 检查owner reference
+		isOwned := false
+		for _, owner := range rs.OwnerReferences {
+			if owner.Kind == "Deployment" && owner.Name == name {
+				isOwned = true
+				break
+			}
+		}
+
+		if isOwned {
+			// 提取镜像列表
+			images := make([]string, 0)
+			for _, container := range rs.Spec.Template.Spec.Containers {
+				images = append(images, container.Image)
+			}
+
+			// 获取revision号
+			revision := rs.Annotations["deployment.kubernetes.io/revision"]
+
+			rsInfo := map[string]interface{}{
+				"name":              rs.Name,
+				"namespace":         rs.Namespace,
+				"replicas":          *rs.Spec.Replicas,
+				"readyReplicas":     rs.Status.ReadyReplicas,
+				"availableReplicas": rs.Status.AvailableReplicas,
+				"revision":          revision,
+				"images":            images,
+				"createdAt":         rs.CreationTimestamp.Time,
+			}
+			matchedReplicaSets = append(matchedReplicaSets, rsInfo)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"items": matchedReplicaSets,
+			"total": len(matchedReplicaSets),
+		},
+	})
+}
+
+// GetDeploymentEvents 获取Deployment的Events
+func (h *DeploymentHandler) GetDeploymentEvents(c *gin.Context) {
+	clusterId := c.Param("clusterID")
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	logger.Info("获取Deployment Events: cluster=%s, namespace=%s, name=%s", clusterId, namespace, name)
+
+	// 获取集群信息
+	clusterID := parseClusterID(clusterId)
+	cluster, err := h.clusterService.GetCluster(clusterID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "集群不存在",
+		})
+		return
+	}
+
+	// 创建K8s客户端
+	var k8sClient *services.K8sClient
+	if cluster.KubeconfigEnc != "" {
+		k8sClient, err = services.NewK8sClientFromKubeconfig(cluster.KubeconfigEnc)
+	} else {
+		k8sClient, err = services.NewK8sClientFromToken(cluster.APIServer, cluster.SATokenEnc, cluster.CAEnc)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "创建K8s客户端失败: " + err.Error(),
+		})
+		return
+	}
+
+	clientset := k8sClient.GetClientset()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 获取Events
+	eventList, err := clientset.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s,involvedObject.kind=Deployment", name),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取Events失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 转换Event信息
+	events := make([]map[string]interface{}, 0, len(eventList.Items))
+	for _, event := range eventList.Items {
+		eventInfo := map[string]interface{}{
+			"type":           event.Type,
+			"reason":         event.Reason,
+			"message":        event.Message,
+			"source":         event.Source,
+			"count":          event.Count,
+			"firstTimestamp": event.FirstTimestamp.Time,
+			"lastTimestamp":  event.LastTimestamp.Time,
+			"involvedObject": map[string]interface{}{
+				"kind":      event.InvolvedObject.Kind,
+				"name":      event.InvolvedObject.Name,
+				"namespace": event.InvolvedObject.Namespace,
+			},
+		}
+		events = append(events, eventInfo)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"items": events,
+			"total": len(events),
+		},
+	})
+}
+
+/** genAI_main_end */
+
 /** genAI_main_end */

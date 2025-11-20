@@ -87,9 +87,9 @@ const DeploymentCreate: React.FC = () => {
       try {
         const response = await WorkloadService.getWorkloadDetail(
           clusterId,
+          workloadType,
           editNamespace,
-          editName,
-          workloadType
+          editName
         );
         
         if (response.code === 200 && response.data) {
