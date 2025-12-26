@@ -26,3 +26,10 @@ log:
 # Kubernetes配置
 k8s:
   default_namespace: default
+
+# Grafana 配置（用于自动同步数据源）
+grafana:
+  enabled: true  # 是否启用 Grafana 数据源自动同步
+  url: http://localhost:3000  # Grafana 地址
+  api_key: "glsa_H6CVdRMMIXirOhdG0oFJMEQ8cKAPTCSy_a2ea7b58"  # Grafana Service Account Token（需要 Admin 权限）
+  # 获取 API Key：Grafana -> Administration -> Service Accounts -> Add token

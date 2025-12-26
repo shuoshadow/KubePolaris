@@ -3,6 +3,8 @@ import { Card, Row, Col, Statistic, Select, Button, Space, Spin, Alert, Switch, 
 import { Line, Area } from '@ant-design/plots';
 import { ReloadOutlined } from '@ant-design/icons';
 import api from '../utils/api';
+import GrafanaPanel from './GrafanaPanel';
+import { generateDataSourceUID } from '../config/grafana.config';
 
 const { Option } = Select;
 
@@ -566,11 +568,15 @@ const MonitoringCharts: React.FC<MonitoringChartsProps> = ({
                 <Card size="small" title="集群资源总量">
                   <Row gutter={16}>
                     <Col span={6}>
-                      <Statistic
-                        title="CPU 总核数"
-                        value={metrics.cluster_overview.total_cpu_cores}
-                        suffix="cores"
-                        valueStyle={{ color: '#52c41a' }}
+                      <GrafanaPanel
+                        dashboardUid="k8s-cluster"
+                        panelId={80}
+                        variables={{ 
+                          cluster: clusterName || '',
+                          datasource: clusterName ? generateDataSourceUID(clusterName) : ''
+                        }}
+                        height={120}
+                        showToolbar={false}
                       />
                     </Col>
                     <Col span={6}>

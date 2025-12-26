@@ -41,8 +41,20 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 
 	// 统一的 Service 实例，避免重复创建
 	clusterSvc := services.NewClusterService(db)
-	monitoringConfigSvc := services.NewMonitoringConfigService(db)
 	prometheusSvc := services.NewPrometheusService()
+
+	// 初始化 Grafana 服务（用于自动同步数据源）
+	var grafanaSvc *services.GrafanaService
+	if cfg.Grafana.Enabled {
+		grafanaSvc = services.NewGrafanaService(cfg.Grafana.URL, cfg.Grafana.APIKey)
+		if err := grafanaSvc.TestConnection(); err != nil {
+			logger.Error("Grafana 连接测试失败，数据源同步将被禁用", "error", err)
+			grafanaSvc = nil
+		} else {
+			logger.Info("Grafana 服务已启用", "url", cfg.Grafana.URL)
+		}
+	}
+	monitoringConfigSvc := services.NewMonitoringConfigServiceWithGrafana(db, grafanaSvc)
 	// K8s Informer 管理器
 	k8sMgr := k8s.NewClusterInformerManager()
 	// 预热所有已存在集群的 Informer（后台执行，不阻塞启动）

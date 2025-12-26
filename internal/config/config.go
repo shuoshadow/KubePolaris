@@ -13,6 +13,14 @@ type Config struct {
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	Log      LogConfig      `mapstructure:"log"`
 	K8s      K8sConfig      `mapstructure:"k8s"`
+	Grafana  GrafanaConfig  `mapstructure:"grafana"`
+}
+
+// GrafanaConfig Grafana 配置
+type GrafanaConfig struct {
+	Enabled bool   `mapstructure:"enabled"`
+	URL     string `mapstructure:"url"`
+	APIKey  string `mapstructure:"api_key"`
 }
 
 // ServerConfig 服务器配置
@@ -102,4 +110,9 @@ func setDefaults() {
 
 	// K8s默认配置
 	viper.SetDefault("k8s.default_namespace", "default")
+
+	// Grafana 默认配置
+	viper.SetDefault("grafana.enabled", false)
+	viper.SetDefault("grafana.url", "http://localhost:3000")
+	viper.SetDefault("grafana.api_key", "")
 }

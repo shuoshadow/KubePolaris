@@ -12,12 +12,21 @@ import (
 
 // MonitoringConfigService 监控配置服务
 type MonitoringConfigService struct {
-	db *gorm.DB
+	db             *gorm.DB
+	grafanaService *GrafanaService
 }
 
 // NewMonitoringConfigService 创建监控配置服务
 func NewMonitoringConfigService(db *gorm.DB) *MonitoringConfigService {
 	return &MonitoringConfigService{db: db}
+}
+
+// NewMonitoringConfigServiceWithGrafana 创建带 Grafana 同步功能的监控配置服务
+func NewMonitoringConfigServiceWithGrafana(db *gorm.DB, grafanaService *GrafanaService) *MonitoringConfigService {
+	return &MonitoringConfigService{
+		db:             db,
+		grafanaService: grafanaService,
+	}
 }
 
 // GetMonitoringConfig 获取集群监控配置
@@ -55,6 +64,12 @@ func (s *MonitoringConfigService) UpdateMonitoringConfig(clusterID uint, config 
 		return fmt.Errorf("配置验证失败: %w", err)
 	}
 
+	// 获取集群名称（用于 Grafana 数据源命名）
+	var cluster models.Cluster
+	if err := s.db.Select("name").First(&cluster, clusterID).Error; err != nil {
+		return fmt.Errorf("获取集群信息失败: %w", err)
+	}
+
 	// 序列化配置
 	configJSON, err := json.Marshal(config)
 	if err != nil {
@@ -69,6 +84,23 @@ func (s *MonitoringConfigService) UpdateMonitoringConfig(clusterID uint, config 
 
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("集群不存在: %d", clusterID)
+	}
+
+	// 同步 Grafana 数据源
+	if s.grafanaService != nil && s.grafanaService.IsEnabled() {
+		if config.Type == "disabled" {
+			// 监控禁用时删除数据源
+			if err := s.grafanaService.DeleteDataSource(cluster.Name); err != nil {
+				logger.Error("删除 Grafana 数据源失败", "cluster", cluster.Name, "error", err)
+				// 不返回错误，只记录日志
+			}
+		} else {
+			// 同步数据源
+			if err := s.grafanaService.SyncDataSource(cluster.Name, config.Endpoint); err != nil {
+				logger.Error("同步 Grafana 数据源失败", "cluster", cluster.Name, "error", err)
+				// 不返回错误，只记录日志
+			}
+		}
 	}
 
 	logger.Info("监控配置更新成功", "cluster_id", clusterID, "type", config.Type)

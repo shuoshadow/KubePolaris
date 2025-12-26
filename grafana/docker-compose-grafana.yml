@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: kubepolaris-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      # 管理员账号
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      
+      # 关键：允许 iframe 嵌入
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      
+      # Cookie 设置（修复登录问题）
+      - GF_SECURITY_COOKIE_SAMESITE=lax
+      - GF_SECURITY_COOKIE_SECURE=false
+      
+      # 匿名访问（暂时禁用，解决权限问题）
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      
+      # 禁用注册
+      - GF_USERS_ALLOW_SIGN_UP=false
+      
+      # 日志级别
+      - GF_LOG_LEVEL=info
+      
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+    networks:
+      - kubepolaris-network
+
+volumes:
+  grafana_data:
+
+networks:
+  kubepolaris-network:
+    driver: bridge
