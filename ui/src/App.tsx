@@ -7,6 +7,7 @@ import ClusterList from './pages/cluster/ClusterList';
 import ClusterDetail from './pages/cluster/ClusterDetail';
 import ClusterImport from './pages/cluster/ClusterImport';
 import ConfigCenter from './pages/cluster/ConfigCenter';
+import ClusterUpgrade from './pages/cluster/ClusterUpgrade';
 import NodeList from './pages/node/NodeList';
 import NodeDetail from './pages/node/NodeDetail';
 import PodList from './pages/pod/PodList';
@@ -33,6 +34,7 @@ import Login from './pages/auth/Login';
 import SystemSettings from './pages/settings/SystemSettings';
 import UserProfile from './pages/profile/UserProfile';
 import Overview from './pages/overview/Overview';
+import { CommandHistory } from './pages/audit';
 import { tokenManager } from './services/authService';
 import './App.css';
 
@@ -72,6 +74,7 @@ const App: React.FC = () => {
               <Route path="clusters" element={<ClusterList />} />
               <Route path="clusters/:id/overview" element={<ClusterDetail />} />
               <Route path="clusters/:clusterId/config-center" element={<ConfigCenter />} />
+              <Route path="clusters/:clusterId/upgrade" element={<ClusterUpgrade />} />
               <Route path="clusters/import" element={<ClusterImport />} />
               <Route path="clusters/:id/terminal" element={<KubectlTerminalPage  />} />
               <Route path="clusters/:clusterId/nodes" element={<NodeList />} />
@@ -108,6 +111,8 @@ const App: React.FC = () => {
               <Route path="clusters/:clusterId/network" element={<NetworkList />} />
               {/* 存储管理路由（PVC、PV、StorageClass） */}
               <Route path="clusters/:clusterId/storage" element={<StorageList />} />
+              {/* 审计管理路由 */}
+              <Route path="audit/commands" element={<CommandHistory />} />
               {/* 系统设置路由 */}
               <Route path="settings" element={<SystemSettings />} />
               {/* 个人资料路由 */}
