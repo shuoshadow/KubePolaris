@@ -166,6 +166,7 @@ const MainLayout: React.FC = () => {
     if (path.match(/\/clusters\/[^/]+\/cost-insights/)) return ['cost-insights'];
     
     // 主页面的路由匹配
+    if (path === '/overview' || path === '/') return ['overview'];
     if (path.startsWith('/clusters') && !path.match(/\/clusters\/[^/]+\//)) return ['cluster-management'];
     if (path.startsWith('/permissions')) return ['permission-management'];
     if (path.startsWith('/settings')) return ['system-settings'];
@@ -178,7 +179,7 @@ const MainLayout: React.FC = () => {
     {
       key: 'overview',
       label: '总览',
-      onClick: () => navigate('/'),
+      onClick: () => navigate('/overview'),
     },
     {
       key: 'cluster-management',

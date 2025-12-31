@@ -32,6 +32,7 @@ import StorageList from './pages/storage/StorageList';
 import Login from './pages/auth/Login';
 import SystemSettings from './pages/settings/SystemSettings';
 import UserProfile from './pages/profile/UserProfile';
+import Overview from './pages/overview/Overview';
 import { tokenManager } from './services/authService';
 import './App.css';
 
@@ -66,7 +67,8 @@ const App: React.FC = () => {
                 <MainLayout />
               </RequireAuth>
             }>
-              <Route index element={<Navigate to="/clusters" replace />} />
+              <Route index element={<Navigate to="/overview" replace />} />
+              <Route path="overview" element={<Overview />} />
               <Route path="clusters" element={<ClusterList />} />
               <Route path="clusters/:id/overview" element={<ClusterDetail />} />
               <Route path="clusters/:clusterId/config-center" element={<ConfigCenter />} />
