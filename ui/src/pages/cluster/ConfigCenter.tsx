@@ -1,12 +1,19 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Card, Tabs } from 'antd';
-import { SettingOutlined, BarChartOutlined } from '@ant-design/icons';
+import { BarChartOutlined, AlertOutlined } from '@ant-design/icons';
 import MonitoringConfigForm from '../../components/MonitoringConfigForm';
+import AlertManagerConfigForm from '../../components/AlertManagerConfigForm';
 import type { TabsProps } from 'antd';
 
 const ConfigCenter: React.FC = () => {
   const { clusterId } = useParams<{ clusterId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'monitoring';
+
+  const handleTabChange = (key: string) => {
+    setSearchParams({ tab: key });
+  };
 
   const tabItems: TabsProps['items'] = [
     {
@@ -26,13 +33,31 @@ const ConfigCenter: React.FC = () => {
         />
       ),
     },
+    {
+      key: 'alertmanager',
+      label: (
+        <span>
+          <AlertOutlined />
+          告警配置
+        </span>
+      ),
+      children: (
+        <AlertManagerConfigForm 
+          clusterId={clusterId || ''} 
+          onConfigChange={() => {
+            // 配置更新后的回调
+          }}
+        />
+      ),
+    },
   ];
 
   return (
     <div style={{ padding: '24px' }}>
       <Card bordered={false}>
         <Tabs
-          defaultActiveKey="monitoring"
+          activeKey={activeTab}
+          onChange={handleTabChange}
           items={tabItems}
         />
       </Card>

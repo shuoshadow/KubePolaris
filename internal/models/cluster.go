@@ -27,6 +27,9 @@ type Cluster struct {
 	// 监控配置
 	MonitoringConfig string `json:"monitoring_config" gorm:"type:json"` // JSON 格式存储监控配置
 
+	// Alertmanager 配置
+	AlertManagerConfig string `json:"alertmanager_config" gorm:"type:json"` // JSON 格式存储 Alertmanager 配置
+
 	// 关联关系
 	Creator         User              `json:"creator" gorm:"foreignKey:CreatedBy"`
 	TerminalSession []TerminalSession `json:"terminal_sessions" gorm:"foreignKey:ClusterID"`
