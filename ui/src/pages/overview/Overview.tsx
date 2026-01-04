@@ -26,6 +26,7 @@ import type {
   AbnormalWorkload,
   VersionDistribution,
   ClusterResourceCount,
+  GlobalAlertStats,
 } from '../../services/overviewService';
 
 // 图表分布数据接口
@@ -65,22 +66,25 @@ const Overview: React.FC = () => {
   const [distribution, setDistribution] = useState<ResourceDistributionResponse | null>(null);
   const [trends, setTrends] = useState<TrendResponse | null>(null);
   const [abnormalWorkloads, setAbnormalWorkloads] = useState<AbnormalWorkload[]>([]);
+  const [alertStats, setAlertStats] = useState<GlobalAlertStats | null>(null);
 
   // 获取所有数据
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, usageRes, distRes, workloadsRes] = await Promise.all([
+      const [statsRes, usageRes, distRes, workloadsRes, alertStatsRes] = await Promise.all([
         overviewService.getStats(),
         overviewService.getResourceUsage(),
         overviewService.getDistribution(),
         overviewService.getAbnormalWorkloads({ limit: 20 }),
+        overviewService.getAlertStats(),
       ]);
       
       setStats(statsRes.data);
       setResourceUsage(usageRes.data);
       setDistribution(distRes.data);
       setAbnormalWorkloads(workloadsRes.data || []);
+      setAlertStats(alertStatsRes.data);
       setLastRefreshTime(new Date());
     } catch (error) {
       console.error('获取总览数据失败:', error);
@@ -515,13 +519,23 @@ const Overview: React.FC = () => {
           </Card>
         </Col>
         <Col span={4}>
-          <Card bordered={false} style={{ ...cardStyle, height: 140 }} bodyStyle={{ padding: '20px 16px' }}>
+          <Card 
+            bordered={false} 
+            style={{ ...cardStyle, height: 140, cursor: (alertStats?.firing || 0) > 0 ? 'pointer' : 'default' }} 
+            bodyStyle={{ padding: '20px 16px' }}
+            onClick={() => (alertStats?.firing || 0) > 0 && navigate('/alerts')}
+          >
             <Statistic
               title={<span style={{ color: '#6b7280' }}><WarningOutlined style={{ color: '#f59e0b' }} /> 告警</span>}
-              value={abnormalWorkloads.length}
-              valueStyle={{ color: abnormalWorkloads.length > 0 ? '#f59e0b' : '#9ca3af', fontSize: 32, fontWeight: 700 }}
-              suffix={<span style={{ fontSize: 14, color: '#9ca3af' }}>个待处理</span>}
+              value={alertStats?.firing || 0}
+              valueStyle={{ color: (alertStats?.firing || 0) > 0 ? '#f59e0b' : '#9ca3af', fontSize: 32, fontWeight: 700 }}
+              suffix={<span style={{ fontSize: 14, color: '#9ca3af' }}>个触发中</span>}
             />
+            {alertStats && alertStats.enabledCount > 0 && (
+              <div style={{ marginTop: 4, fontSize: 12, color: '#9ca3af' }}>
+                {alertStats.enabledCount} 个集群已配置告警
+              </div>
+            )}
           </Card>
         </Col>
       </Row>

@@ -22,6 +22,8 @@ func NewOverviewHandler(
 	listerProvider services.InformerListerProvider,
 	promService *services.PrometheusService,
 	monitoringCfgSvc *services.MonitoringConfigService,
+	alertManagerCfgSvc *services.AlertManagerConfigService,
+	alertManagerSvc *services.AlertManagerService,
 ) *OverviewHandler {
 	overviewSvc := services.NewOverviewService(
 		nil, // db 可选，如果需要直接查询数据库
@@ -29,6 +31,8 @@ func NewOverviewHandler(
 		listerProvider,
 		promService,
 		monitoringCfgSvc,
+		alertManagerCfgSvc,
+		alertManagerSvc,
 	)
 	return &OverviewHandler{
 		overviewService: overviewSvc,
@@ -191,6 +195,35 @@ func (h *OverviewHandler) GetAbnormalWorkloads(c *gin.Context) {
 		"code":    200,
 		"message": "获取成功",
 		"data":    workloads,
+	})
+}
+
+// GetAlertStats 获取全局告警统计
+// @Summary 获取全局告警统计
+// @Description 返回所有集群的告警汇总统计
+// @Tags Overview
+// @Accept json
+// @Produce json
+// @Success 200 {object} services.GlobalAlertStats
+// @Router /api/v1/overview/alert-stats [get]
+func (h *OverviewHandler) GetAlertStats(c *gin.Context) {
+	logger.Info("获取全局告警统计")
+
+	stats, err := h.overviewService.GetGlobalAlertStats(c.Request.Context())
+	if err != nil {
+		logger.Error("获取全局告警统计失败", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取全局告警统计失败: " + err.Error(),
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "获取成功",
+		"data":    stats,
 	})
 }
 

@@ -103,6 +103,26 @@ export interface AbnormalWorkload {
   severity: 'warning' | 'critical';
 }
 
+// 集群告警计数
+export interface ClusterAlertCount {
+  clusterId: number;
+  clusterName: string;
+  total: number;
+  firing: number;
+}
+
+// 全局告警统计
+export interface GlobalAlertStats {
+  total: number;
+  firing: number;
+  pending: number;
+  resolved: number;
+  suppressed: number;
+  bySeverity: Record<string, number>;
+  byCluster: ClusterAlertCount[];
+  enabledCount: number;
+}
+
 // ========== API 服务 ==========
 
 export const overviewService = {
@@ -129,6 +149,11 @@ export const overviewService = {
   // 获取异常工作负载
   getAbnormalWorkloads: (params?: { limit?: number }) => {
     return request.get<AbnormalWorkload[]>('/overview/abnormal-workloads', { params });
+  },
+
+  // 获取全局告警统计
+  getAlertStats: () => {
+    return request.get<GlobalAlertStats>('/overview/alert-stats');
   },
 };
 

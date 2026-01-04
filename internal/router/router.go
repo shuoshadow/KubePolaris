@@ -43,6 +43,8 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	clusterSvc := services.NewClusterService(db)
 	prometheusSvc := services.NewPrometheusService()
 	auditSvc := services.NewAuditService(db) // 审计服务
+	argoCDSvc := services.NewArgoCDService(db) // ArgoCD 服务
+	permissionSvc := services.NewPermissionService(db) // 权限服务
 
 	// 初始化 Grafana 服务（用于自动同步数据源）
 	var grafanaSvc *services.GrafanaService
@@ -364,18 +366,41 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 					storageclasses.GET("/:name/yaml", storageHandler.GetStorageClassYAML)
 					storageclasses.DELETE("/:name", storageHandler.DeleteStorageClass)
 				}
+
+				// ArgoCD / GitOps 插件中心
+				argoCDHandler := handlers.NewArgoCDHandler(db, argoCDSvc)
+				argocd := cluster.Group("/argocd")
+				{
+					// 配置管理
+					argocd.GET("/config", argoCDHandler.GetConfig)
+					argocd.PUT("/config", argoCDHandler.SaveConfig)
+					argocd.POST("/test-connection", argoCDHandler.TestConnection)
+
+					// 应用管理（通过 ArgoCD API 代理）
+					argocd.GET("/applications", argoCDHandler.ListApplications)
+					argocd.GET("/applications/:appName", argoCDHandler.GetApplication)
+					argocd.POST("/applications", argoCDHandler.CreateApplication)
+					argocd.PUT("/applications/:appName", argoCDHandler.UpdateApplication)
+					argocd.DELETE("/applications/:appName", argoCDHandler.DeleteApplication)
+					argocd.POST("/applications/:appName/sync", argoCDHandler.SyncApplication)
+					argocd.POST("/applications/:appName/rollback", argoCDHandler.RollbackApplication)
+					argocd.GET("/applications/:appName/resources", argoCDHandler.GetApplicationResources)
+				}
 			}
 		}
 
 		// overview - 总览大盘
 		overview := protected.Group("/overview")
 		{
-			overviewHandler := handlers.NewOverviewHandler(clusterSvc, k8sMgr, prometheusSvc, monitoringConfigSvc)
+			alertManagerCfgSvc := services.NewAlertManagerConfigService(db)
+			alertManagerSvc := services.NewAlertManagerService()
+			overviewHandler := handlers.NewOverviewHandler(clusterSvc, k8sMgr, prometheusSvc, monitoringConfigSvc, alertManagerCfgSvc, alertManagerSvc)
 			overview.GET("/stats", overviewHandler.GetStats)
 			overview.GET("/resource-usage", overviewHandler.GetResourceUsage)
 			overview.GET("/distribution", overviewHandler.GetDistribution)
 			overview.GET("/trends", overviewHandler.GetTrends)
 			overview.GET("/abnormal-workloads", overviewHandler.GetAbnormalWorkloads)
+			overview.GET("/alert-stats", overviewHandler.GetAlertStats)
 		}
 
 		// search
@@ -414,6 +439,46 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			systemSettings.PUT("/ssh/config", systemSettingHandler.UpdateSSHConfig)
 			systemSettings.GET("/ssh/credentials", systemSettingHandler.GetSSHCredentials)
 		}
+
+		// permissions - 权限管理
+		permissionHandler := handlers.NewPermissionHandler(permissionSvc)
+		permissions := protected.Group("/permissions")
+		{
+			// 权限类型
+			permissions.GET("/types", permissionHandler.GetPermissionTypes)
+
+			// 用户列表（用于权限分配）
+			permissions.GET("/users", permissionHandler.ListUsers)
+
+			// 用户组管理
+			userGroups := permissions.Group("/user-groups")
+			{
+				userGroups.GET("", permissionHandler.ListUserGroups)
+				userGroups.POST("", permissionHandler.CreateUserGroup)
+				userGroups.GET("/:id", permissionHandler.GetUserGroup)
+				userGroups.PUT("/:id", permissionHandler.UpdateUserGroup)
+				userGroups.DELETE("/:id", permissionHandler.DeleteUserGroup)
+				userGroups.POST("/:id/users", permissionHandler.AddUserToGroup)
+				userGroups.DELETE("/:id/users/:userId", permissionHandler.RemoveUserFromGroup)
+			}
+
+			// 集群权限管理
+			clusterPerms := permissions.Group("/cluster-permissions")
+			{
+				clusterPerms.GET("", permissionHandler.ListAllClusterPermissions)
+				clusterPerms.POST("", permissionHandler.CreateClusterPermission)
+				clusterPerms.GET("/:id", permissionHandler.GetClusterPermission)
+				clusterPerms.PUT("/:id", permissionHandler.UpdateClusterPermission)
+				clusterPerms.DELETE("/:id", permissionHandler.DeleteClusterPermission)
+				clusterPerms.POST("/batch-delete", permissionHandler.BatchDeleteClusterPermissions)
+			}
+
+			// 当前用户权限查询
+			permissions.GET("/my-permissions", permissionHandler.GetMyPermissions)
+		}
+
+		// 集群级权限查询
+		protected.GET("/clusters/:clusterID/my-permissions", permissionHandler.GetMyClusterPermission)
 	}
 
 	// WebSocket：建议也加认证

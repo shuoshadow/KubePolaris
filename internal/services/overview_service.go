@@ -31,11 +31,13 @@ type InformerListerProvider interface {
 
 // OverviewService 总览服务
 type OverviewService struct {
-	db                *gorm.DB
-	clusterService    *ClusterService
-	listerProvider    InformerListerProvider
-	promService       *PrometheusService
-	monitoringCfgSvc  *MonitoringConfigService
+	db                      *gorm.DB
+	clusterService          *ClusterService
+	listerProvider          InformerListerProvider
+	promService             *PrometheusService
+	monitoringCfgSvc        *MonitoringConfigService
+	alertManagerCfgSvc      *AlertManagerConfigService
+	alertManagerSvc         *AlertManagerService
 }
 
 // NewOverviewService 创建总览服务
@@ -45,13 +47,17 @@ func NewOverviewService(
 	listerProvider InformerListerProvider,
 	promService *PrometheusService,
 	monitoringCfgSvc *MonitoringConfigService,
+	alertManagerCfgSvc *AlertManagerConfigService,
+	alertManagerSvc *AlertManagerService,
 ) *OverviewService {
 	return &OverviewService{
-		db:               db,
-		clusterService:   clusterService,
-		listerProvider:   listerProvider,
-		promService:      promService,
-		monitoringCfgSvc: monitoringCfgSvc,
+		db:                     db,
+		clusterService:         clusterService,
+		listerProvider:         listerProvider,
+		promService:            promService,
+		monitoringCfgSvc:       monitoringCfgSvc,
+		alertManagerCfgSvc:     alertManagerCfgSvc,
+		alertManagerSvc:        alertManagerSvc,
 	}
 }
 
@@ -156,6 +162,26 @@ type AbnormalWorkload struct {
 	Message     string `json:"message"`
 	Duration    string `json:"duration"`
 	Severity    string `json:"severity"`
+}
+
+// GlobalAlertStats 全局告警统计
+type GlobalAlertStats struct {
+	Total        int            `json:"total"`        // 告警总数
+	Firing       int            `json:"firing"`       // 触发中
+	Pending      int            `json:"pending"`      // 等待中
+	Resolved     int            `json:"resolved"`     // 已解决
+	Suppressed   int            `json:"suppressed"`   // 已抑制
+	BySeverity   map[string]int `json:"bySeverity"`   // 按严重程度统计
+	ByCluster    []ClusterAlertCount `json:"byCluster"` // 按集群统计
+	EnabledCount int            `json:"enabledCount"` // 已启用告警的集群数
+}
+
+// ClusterAlertCount 集群告警计数
+type ClusterAlertCount struct {
+	ClusterID   uint   `json:"clusterId"`
+	ClusterName string `json:"clusterName"`
+	Total       int    `json:"total"`
+	Firing      int    `json:"firing"`
 }
 
 // ========== 服务方法 ==========
@@ -697,6 +723,122 @@ func (s *OverviewService) GetAbnormalWorkloads(ctx context.Context, limit int) (
 	}
 
 	return workloads, nil
+}
+
+// GetGlobalAlertStats 获取全局告警统计（聚合所有集群的告警数据）
+func (s *OverviewService) GetGlobalAlertStats(ctx context.Context) (*GlobalAlertStats, error) {
+	clusters, err := s.clusterService.GetAllClusters()
+	if err != nil {
+		return nil, fmt.Errorf("获取集群列表失败: %w", err)
+	}
+
+	stats := &GlobalAlertStats{
+		BySeverity: make(map[string]int),
+		ByCluster:  make([]ClusterAlertCount, 0),
+	}
+
+	if s.alertManagerCfgSvc == nil || s.alertManagerSvc == nil {
+		logger.Warn("AlertManager 服务未配置，返回空统计")
+		return stats, nil
+	}
+
+	// 并发获取各集群告警
+	type clusterResult struct {
+		ClusterID   uint
+		ClusterName string
+		Stats       *models.AlertStats
+		Enabled     bool
+		Err         error
+	}
+
+	resultCh := make(chan clusterResult, len(clusters))
+	var wg sync.WaitGroup
+
+	for _, cluster := range clusters {
+		wg.Add(1)
+		go func(c *models.Cluster) {
+			defer wg.Done()
+
+			result := clusterResult{
+				ClusterID:   c.ID,
+				ClusterName: c.Name,
+			}
+
+			// 获取集群的 AlertManager 配置
+			config, err := s.alertManagerCfgSvc.GetAlertManagerConfig(c.ID)
+			if err != nil {
+				result.Err = err
+				resultCh <- result
+				return
+			}
+
+			if !config.Enabled {
+				result.Enabled = false
+				resultCh <- result
+				return
+			}
+
+			result.Enabled = true
+
+			// 获取告警统计
+			alertStats, err := s.alertManagerSvc.GetAlertStats(ctx, config)
+			if err != nil {
+				logger.Warn("获取集群告警统计失败", "cluster", c.Name, "error", err)
+				result.Err = err
+				resultCh <- result
+				return
+			}
+
+			result.Stats = alertStats
+			resultCh <- result
+		}(cluster)
+	}
+
+	// 等待完成后关闭 channel
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	// 汇总结果
+	for result := range resultCh {
+		if !result.Enabled {
+			continue
+		}
+
+		stats.EnabledCount++
+
+		if result.Stats == nil {
+			continue
+		}
+
+		// 汇总总数
+		stats.Total += result.Stats.Total
+		stats.Firing += result.Stats.Firing
+		stats.Pending += result.Stats.Pending
+		stats.Resolved += result.Stats.Resolved
+		stats.Suppressed += result.Stats.Suppressed
+
+		// 汇总按严重程度
+		for severity, count := range result.Stats.BySeverity {
+			stats.BySeverity[severity] += count
+		}
+
+		// 记录每个集群的告警数
+		stats.ByCluster = append(stats.ByCluster, ClusterAlertCount{
+			ClusterID:   result.ClusterID,
+			ClusterName: result.ClusterName,
+			Total:       result.Stats.Total,
+			Firing:      result.Stats.Firing,
+		})
+	}
+
+	// 按告警数排序
+	sort.Slice(stats.ByCluster, func(i, j int) bool {
+		return stats.ByCluster[i].Firing > stats.ByCluster[j].Firing
+	})
+
+	return stats, nil
 }
 
 // ========== 辅助函数 ==========
