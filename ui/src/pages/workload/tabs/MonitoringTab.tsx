@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
-import { Card, Row, Col, Space, Switch, Button, DatePicker, Popover, Divider, Typography, Empty } from 'antd';
+/**
+ * 工作负载监控 Tab - 使用整个 Grafana Dashboard 嵌入
+ * 相比多 Panel 分别嵌入，整体嵌入加载更快
+ */
+import React, { useState, useMemo, useCallback } from 'react';
+import { Card, Space, Button, Switch, Spin, DatePicker, Popover, Divider, Typography, Empty } from 'antd';
 import { ReloadOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
-import GrafanaPanel from '../../../components/GrafanaPanel';
 import { generateDataSourceUID } from '../../../config/grafana.config';
 
 const { Text } = Typography;
+
+const GRAFANA_URL = import.meta.env.VITE_GRAFANA_URL || 'http://localhost:3000';
+const DASHBOARD_UID = 'kubepolaris-workload-detail';
 
 // Grafana 风格的时间范围选项
 const TIME_RANGE_OPTIONS = [
@@ -39,42 +45,6 @@ interface MonitoringTabProps {
   workloadType?: 'Deployment' | 'StatefulSet' | 'DaemonSet' | 'Rollout';
 }
 
-// Grafana Dashboard UID（需要在 Grafana 中导入对应的 Dashboard）
-const DASHBOARD_UID = 'kubepolaris-workload-detail';
-
-// Panel ID 映射（对应 Grafana Dashboard 中的 Panel）
-const PANEL_IDS = {
-  // 第一行：CPU、内存、IO
-  cpuUsage: 2,              // CPU 使用率
-  memoryUsage: 6,           // Memory 使用率
-  ioReadQps: 18,            // IO Read QPS
-  ioWriteQps: 19,           // IO Write QPS
-  
-  // 第二行：限制指标和健康状态
-  cpuLimit: 28,             // CPU 核限制
-  memoryLimit: 30,          // 内存限制
-  availability: 34,         // 容器整体可用率
-  healthCheckFailed: 36,    // 健康检查失败次数
-  containerRestarts: 38,    // 容器重启情况
-  
-  // 第三行：网络流量
-  networkIncoming: 4,       // Network Incoming
-  networkOutgoing: 14,      // Network Outgoing
-  networkInputPps: 15,      // Network Input PPS
-  networkOutputPps: 16,     // Network Output PPS
-  
-  // 第四行：文件句柄和线程
-  fileDescriptors: 22,      // 文件句柄打开数
-  runningThreads: 23,       // Running Threads
-  networkInputDropped: 12,  // Network Input Dropped
-  networkOutputDropped: 20, // Network Output Dropped
-  
-  // 第五行：CPU限流
-  cpuThrottleRate: 46,      // CPU限流比例
-  cpuThrottleTime: 32,      // CPU节流时间
-  
-};
-
 const MonitoringTab: React.FC<MonitoringTabProps> = ({
   clusterId,
   clusterName,
@@ -85,6 +55,9 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [timePickerOpen, setTimePickerOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  // 自定义时间范围状态
   const [isCustomRange, setIsCustomRange] = useState(false);
   const [customFromTime, setCustomFromTime] = useState<Dayjs | null>(null);
   const [customToTime, setCustomToTime] = useState<Dayjs | null>(null);
@@ -92,20 +65,20 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({
   // 根据集群名生成数据源 UID
   const dataSourceUid = clusterName ? generateDataSourceUID(clusterName) : '';
 
-  // 获取时间范围
-  const getFromTime = () => {
+  // 获取时间范围参数
+  const getFromTime = useCallback(() => {
     if (isCustomRange && customFromTime) {
       return customFromTime.valueOf().toString();
     }
     return `now-${timeRange}`;
-  };
+  }, [isCustomRange, customFromTime, timeRange]);
 
-  const getToTime = () => {
+  const getToTime = useCallback(() => {
     if (isCustomRange && customToTime) {
       return customToTime.valueOf().toString();
     }
     return 'now';
-  };
+  }, [isCustomRange, customToTime]);
 
   // 获取显示的时间范围文本
   const getTimeRangeDisplay = () => {
@@ -116,12 +89,50 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({
     return option?.label || 'Last 1 hour';
   };
 
+  // 构建完整 Dashboard 嵌入 URL
+  const dashboardUrl = useMemo(() => {
+    const params = new URLSearchParams({
+      orgId: '1',
+      from: getFromTime(),
+      to: getToTime(),
+      theme: 'light',
+    });
+
+    // 添加数据源变量
+    if (dataSourceUid) {
+      params.append('var-DS_PROMETHEUS', dataSourceUid);
+    }
+    
+    // 添加工作负载相关变量
+    params.append('var-deployment_namespace', namespace);
+    params.append('var-podname', workloadName);
+    params.append('var-Interface', 'eth0');
+    params.append('var-Intervals', '1m');
+
+    // 添加自动刷新
+    if (autoRefresh) {
+      params.append('refresh', '30s');
+    }
+
+    // 完全 kiosk 模式：隐藏侧边栏和顶部导航栏
+    return `${GRAFANA_URL}/d/${DASHBOARD_UID}/?${params.toString()}&kiosk`;
+  }, [getFromTime, getToTime, dataSourceUid, namespace, workloadName, refreshKey, autoRefresh]);
+
+  const handleRefresh = () => {
+    setLoading(true);
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleIframeLoad = () => {
+    setLoading(false);
+  };
+
   // 应用自定义时间范围
   const applyCustomRange = () => {
     if (customFromTime && customToTime) {
       setIsCustomRange(true);
       setTimePickerOpen(false);
-      setRefreshKey(prev => prev + 1);
+      handleRefresh();
     }
   };
 
@@ -130,43 +141,7 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({
     setTimeRange(value);
     setIsCustomRange(false);
     setTimePickerOpen(false);
-    setRefreshKey(prev => prev + 1);
-  };
-
-  // 刷新间隔
-  const getRefreshInterval = () => {
-    return autoRefresh ? '30s' : undefined;
-  };
-
-  // 公共 Panel 配置
-  const getPanelProps = (
-    panelId: number,
-    height: number = 200,
-    priority: 'high' | 'normal' | 'low' = 'normal',
-    batchIndex: number = 0
-  ) => ({
-    dashboardUid: DASHBOARD_UID,
-    panelId,
-    variables: {
-      DS_PROMETHEUS: dataSourceUid,
-      deployment_namespace: namespace,
-      podname: workloadName,
-      Interface: 'eth0',
-      Intervals: '1m',
-    } as Record<string, string>,
-    from: getFromTime(),
-    to: getToTime(),
-    refresh: getRefreshInterval(),
-    height,
-    showToolbar: false,
-    theme: 'light' as const,
-    key: `${panelId}-${refreshKey}-${clusterId}-${namespace}-${workloadName}`,
-    priority,
-    loadDelay: batchIndex * 300,
-  });
-
-  const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
+    handleRefresh();
   };
 
   // 检查必要的参数
@@ -242,9 +217,9 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({
   );
 
   return (
-    <div>
-      {/* 工具栏 */}
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+    <Card
+      title="监控图表"
+      extra={
         <Space>
           <Popover
             content={timePickerContent}
@@ -261,7 +236,10 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({
             <span>自动刷新</span>
             <Switch
               checked={autoRefresh}
-              onChange={setAutoRefresh}
+              onChange={(checked) => {
+                setAutoRefresh(checked);
+                handleRefresh();
+              }}
               checkedChildren="开"
               unCheckedChildren="关"
             />
@@ -270,98 +248,37 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({
             刷新
           </Button>
         </Space>
-      </div>
-
-      {/* CPU/内存/IO 使用率 */}
-      <Card size="small" title="资源使用" style={{ marginBottom: 16 }}>
-        <Row gutter={[16, 16]}>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.cpuUsage, 220, 'high', 0)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.memoryUsage, 220, 'high', 0)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.ioReadQps, 220, 'high', 0)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.ioWriteQps, 220, 'high', 0)} />
-          </Col>
-        </Row>
-      </Card>
-
-      {/* 资源限制和容器状态 */}
-      <Card size="small" title="容器状态" style={{ marginBottom: 16 }}>
-        <Row gutter={[16, 16]}>
-          <Col span={4}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.cpuLimit, 180, 'normal', 1)} />
-          </Col>
-          <Col span={4}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.memoryLimit, 180, 'normal', 1)} />
-          </Col>
-          <Col span={4}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.availability, 180, 'normal', 1)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.healthCheckFailed, 180, 'normal', 2)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.containerRestarts, 180, 'normal', 2)} />
-          </Col>
-        </Row>
-      </Card>
-
-      {/* 网络流量 */}
-      <Card size="small" title="网络流量" style={{ marginBottom: 16 }}>
-        <Row gutter={[16, 16]}>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.networkIncoming, 220, 'normal', 3)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.networkOutgoing, 220, 'normal', 3)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.networkInputPps, 220, 'normal', 3)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.networkOutputPps, 220, 'normal', 3)} />
-          </Col>
-        </Row>
-      </Card>
-
-      {/* 系统资源 */}
-      <Card size="small" title="系统资源" style={{ marginBottom: 16 }}>
-        <Row gutter={[16, 16]}>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.fileDescriptors, 220, 'low', 4)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.runningThreads, 220, 'low', 4)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.networkInputDropped, 220, 'low', 4)} />
-          </Col>
-          <Col span={6}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.networkOutputDropped, 220, 'low', 4)} />
-          </Col>
-        </Row>
-      </Card>
-
-      {/* CPU 限流 */}
-      <Card size="small" title="CPU 限流" style={{ marginBottom: 16 }}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.cpuThrottleRate, 220, 'low', 5)} />
-          </Col>
-          <Col span={24}>
-            <GrafanaPanel {...getPanelProps(PANEL_IDS.cpuThrottleTime, 220, 'low', 5)} />
-          </Col>
-        </Row>
-      </Card>
-
-    </div>
+      }
+      styles={{ body: { padding: 0, position: 'relative', minHeight: 800 } }}
+    >
+      {/* 加载状态 */}
+      {loading && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 10,
+          textAlign: 'center',
+        }}>
+          <Spin size="large" />
+          <div style={{ marginTop: 16, color: '#666' }}>监控数据加载中...</div>
+        </div>
+      )}
+      
+      {/* 整个 Dashboard iframe */}
+      <iframe
+        key={`${refreshKey}-${clusterId}-${namespace}-${workloadName}`}
+        src={dashboardUrl}
+        width="100%"
+        height="800"
+        frameBorder="0"
+        style={{ border: 'none', display: 'block' }}
+        title="Grafana Workload Monitoring Dashboard"
+        onLoad={handleIframeLoad}
+      />
+    </Card>
   );
 };
 
 export default MonitoringTab;
-

@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
-import { Card, Row, Col, Space, Switch, Button, DatePicker, Popover, Divider, Typography } from 'antd';
+/**
+ * 集群监控面板组件 - 使用整个 Grafana Dashboard 嵌入
+ * 相比多 Panel 分别嵌入，整体嵌入加载更快
+ */
+import React, { useState, useMemo, useCallback } from 'react';
+import { Card, Space, Button, Spin, Switch, Popover, Divider, Typography, DatePicker } from 'antd';
 import { ReloadOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
-import GrafanaPanel from './GrafanaPanel';
 import { generateDataSourceUID } from '../config/grafana.config';
 
 const { Text } = Typography;
+
+const GRAFANA_URL = import.meta.env.VITE_GRAFANA_URL || 'http://localhost:3000';
+const DASHBOARD_UID = 'kubepolaris-cluster-overview';
 
 // Grafana 风格的时间范围选项
 const TIME_RANGE_OPTIONS = [
@@ -38,42 +44,6 @@ interface ClusterMonitoringPanelsProps {
   clusterName?: string;
 }
 
-// Grafana Dashboard 配置
-const DASHBOARD_UID = 'kubepolaris-cluster-overview';
-
-// Panel ID 映射（对应 Grafana Dashboard 中的 Panel）
-const PANEL_IDS = {
-  // 资源池
-  workerNodes: 85,        // 工作节点数
-  cpuCores: 87,           // CPU 总核数
-  totalMemory: 89,        // 内存总数
-  maxPods: 90,            // Pod 最大可创建数
-  createdPods: 91,        // Pod 已创建数
-  podUsage: 92,           // Pod 使用率
-  availablePods: 93,      // Pod 可创建数
-  
-  // 集群状态
-  etcdLeader: 69,         // Etcd has a leader?
-  apiserverAvailability: 4, // apiserver 近30天可用率
-  cpuRequest: 25,         // CPU request
-  cpuLimit: 29,           // CPU limit
-  memRequest: 27,         // 内存 request
-  memLimit: 31,           // 内存 limit
-  apiserverRequests: 2,   // apiserver总请求量
-  clusterCpuUsage: 63,    // 集群 CPU 使用率
-  clusterMemoryUsage: 65, // 集群内存使用率
-  
-  // Node 资源使用
-  nodeCpuUsage: 104,      // CPU 使用率
-  nodeMemoryUsage: 107,   // 内存使用率
-  loadSaturation: 108,    // Load 饱和度
-  networkTraffic: 106,    // Network Traffic
-  
-  // Pod 情况
-  podAbnormalList: 73,    // Pod 异常列表
-  podAbnormalDistribution: 47, // 异常 Pod 分布情况
-};
-
 const ClusterMonitoringPanels: React.FC<ClusterMonitoringPanelsProps> = ({
   clusterId,
   clusterName,
@@ -82,6 +52,7 @@ const ClusterMonitoringPanels: React.FC<ClusterMonitoringPanelsProps> = ({
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [timePickerOpen, setTimePickerOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // 自定义时间范围状态
   const [isCustomRange, setIsCustomRange] = useState(false);
@@ -91,20 +62,20 @@ const ClusterMonitoringPanels: React.FC<ClusterMonitoringPanelsProps> = ({
   // 根据集群名生成数据源 UID
   const dataSourceUid = clusterName ? generateDataSourceUID(clusterName) : '';
 
-  // 获取时间范围（支持快速选择和自定义范围）
-  const getFromTime = () => {
+  // 获取时间范围参数
+  const getFromTime = useCallback(() => {
     if (isCustomRange && customFromTime) {
-      return customFromTime.valueOf().toString(); // 毫秒时间戳
+      return customFromTime.valueOf().toString();
     }
     return `now-${timeRange}`;
-  };
+  }, [isCustomRange, customFromTime, timeRange]);
 
-  const getToTime = () => {
+  const getToTime = useCallback(() => {
     if (isCustomRange && customToTime) {
-      return customToTime.valueOf().toString(); // 毫秒时间戳
+      return customToTime.valueOf().toString();
     }
     return 'now';
-  };
+  }, [isCustomRange, customToTime]);
 
   // 获取显示的时间范围文本
   const getTimeRangeDisplay = () => {
@@ -115,12 +86,44 @@ const ClusterMonitoringPanels: React.FC<ClusterMonitoringPanelsProps> = ({
     return option?.label || 'Last 1 hour';
   };
 
+  // 构建完整 Dashboard 嵌入 URL（kiosk 模式隐藏导航）
+  const dashboardUrl = useMemo(() => {
+    const params = new URLSearchParams({
+      orgId: '1',
+      from: getFromTime(),
+      to: getToTime(),
+      theme: 'light',
+    });
+
+    // 添加数据源变量
+    if (dataSourceUid) {
+      params.append('var-DS_PROMETHEUS', dataSourceUid);
+    }
+
+    // 添加自动刷新
+    if (autoRefresh) {
+      params.append('refresh', '30s');
+    }
+
+    // 完全 kiosk 模式：隐藏侧边栏和顶部导航栏
+    return `${GRAFANA_URL}/d/${DASHBOARD_UID}/?${params.toString()}&kiosk`;
+  }, [getFromTime, getToTime, dataSourceUid, refreshKey, autoRefresh]);
+
+  const handleRefresh = () => {
+    setLoading(true);
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleIframeLoad = () => {
+    setLoading(false);
+  };
+
   // 应用自定义时间范围
   const applyCustomRange = () => {
     if (customFromTime && customToTime) {
       setIsCustomRange(true);
       setTimePickerOpen(false);
-      setRefreshKey(prev => prev + 1);
+      handleRefresh();
     }
   };
 
@@ -129,40 +132,7 @@ const ClusterMonitoringPanels: React.FC<ClusterMonitoringPanelsProps> = ({
     setTimeRange(value);
     setIsCustomRange(false);
     setTimePickerOpen(false);
-    setRefreshKey(prev => prev + 1);
-  };
-
-  // 刷新间隔
-  const getRefreshInterval = () => {
-    return autoRefresh ? '30s' : undefined;
-  };
-
-  // 公共 Panel 配置
-  // priority: 'high' = 立即加载, 'normal' = 延迟加载, 'low' = 最后加载
-  const getPanelProps = (
-    panelId: number, 
-    height: number = 200, 
-    priority: 'high' | 'normal' | 'low' = 'normal',
-    batchIndex: number = 0  // 分批加载的批次索引
-  ) => ({
-    dashboardUid: DASHBOARD_UID,
-    panelId,
-    // 传递数据源 UID，切换集群时会自动切换到对应的 Prometheus 数据源
-    variables: { DS_PROMETHEUS: dataSourceUid } as Record<string, string>,
-    from: getFromTime(),
-    to: getToTime(),
-    refresh: getRefreshInterval(),
-    height,
-    showToolbar: false,
-    theme: 'light' as const,
-    // key 中包含 clusterName，切换集群时强制刷新所有 Panel
-    key: `${panelId}-${refreshKey}-${clusterId}`,
-    priority,
-    loadDelay: batchIndex * 300, // 每批次延迟 300ms，控制并发
-  });
-
-  const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
+    handleRefresh();
   };
 
   // 时间选择器 Popover 内容
@@ -230,141 +200,71 @@ const ClusterMonitoringPanels: React.FC<ClusterMonitoringPanelsProps> = ({
   );
 
   return (
-    <div>
-      <Card
-        title="监控图表"
-        extra={
-          <Space>
-            <Popover
-              content={timePickerContent}
-              trigger="click"
-              open={timePickerOpen}
-              onOpenChange={setTimePickerOpen}
-              placement="bottomRight"
-            >
-              <Button icon={<ClockCircleOutlined />} style={{ minWidth: 180 }}>
-                {getTimeRangeDisplay()}
-              </Button>
-            </Popover>
-            <Space>
-              <span>自动刷新</span>
-              <Switch
-                checked={autoRefresh}
-                onChange={setAutoRefresh}
-                checkedChildren="开"
-                unCheckedChildren="关"
-              />
-            </Space>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={handleRefresh}
-            >
-              刷新
+    <Card
+      title="监控图表"
+      extra={
+        <Space>
+          <Popover
+            content={timePickerContent}
+            trigger="click"
+            open={timePickerOpen}
+            onOpenChange={setTimePickerOpen}
+            placement="bottomRight"
+          >
+            <Button icon={<ClockCircleOutlined />} style={{ minWidth: 180 }}>
+              {getTimeRangeDisplay()}
             </Button>
+          </Popover>
+          <Space>
+            <span>自动刷新</span>
+            <Switch
+              checked={autoRefresh}
+              onChange={(checked) => {
+                setAutoRefresh(checked);
+                handleRefresh();
+              }}
+              checkedChildren="开"
+              unCheckedChildren="关"
+            />
           </Space>
-        }
-      >
-        {/* 集群资源总量 - 第一批加载 (高优先级) */}
-        <Card size="small" title="集群资源总量" style={{ marginBottom: 16 }}>
-          <Row gutter={[16, 16]}>
-            <Col span={3}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.workerNodes, 120, 'high', 0)} />
-            </Col>
-            <Col span={3}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.cpuCores, 120, 'high', 0)} />
-            </Col>
-            <Col span={3}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.totalMemory, 120, 'high', 0)} />
-            </Col>
-            <Col span={3}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.maxPods, 120, 'normal', 1)} />
-            </Col>
-            <Col span={3}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.createdPods, 120, 'normal', 1)} />
-            </Col>
-            <Col span={3}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.podUsage, 120, 'normal', 1)} />
-            </Col>
-            <Col span={3}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.availablePods, 120, 'normal', 1)} />
-            </Col>
-          </Row>
-        </Card>
-
-        {/* 集群状态 - 第二批加载 */}
-        <Card size="small" title="集群状态" style={{ marginBottom: 16 }}>
-          <Row gutter={[12, 12]} align="top">
-            {/* 左侧：CPU/内存使用率 - 高优先级 */}
-            <Col span={6}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.clusterCpuUsage, 280, 'high', 0)} />
-            </Col>
-            <Col span={6}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.clusterMemoryUsage, 280, 'high', 0)} />
-            </Col>
-            
-            {/* 右侧：Stat 指标（第二批加载） */}
-            <Col span={12}>
-              <Row gutter={[8, 8]}>
-                <Col span={4}>
-                  <GrafanaPanel {...getPanelProps(PANEL_IDS.etcdLeader, 120, 'normal', 2)} />
-                </Col>
-                <Col span={4}>
-                  <GrafanaPanel {...getPanelProps(PANEL_IDS.apiserverAvailability, 120, 'normal', 2)} />
-                </Col>
-                <Col span={4}>
-                  <GrafanaPanel {...getPanelProps(PANEL_IDS.cpuRequest, 120, 'normal', 2)} />
-                </Col>
-                <Col span={4}>
-                  <GrafanaPanel {...getPanelProps(PANEL_IDS.cpuLimit, 120, 'normal', 3)} />
-                </Col>
-                <Col span={4}>
-                  <GrafanaPanel {...getPanelProps(PANEL_IDS.memRequest, 120, 'normal', 3)} />
-                </Col>
-                <Col span={4}>
-                  <GrafanaPanel {...getPanelProps(PANEL_IDS.memLimit, 120, 'normal', 3)} />
-                </Col>
-              </Row>
-              {/* apiserver 请求量 - 第四批 */}
-              <div style={{ marginTop: 8 }}>
-                <GrafanaPanel {...getPanelProps(PANEL_IDS.apiserverRequests, 150, 'normal', 4)} />
-              </div>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* Node 资源使用 - 第五批加载 (低优先级，需要滚动才可见) */}
-        <Card size="small" title="Node 资源使用" style={{ marginBottom: 16 }}>
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.nodeCpuUsage, 280, 'low', 5)} />
-            </Col>
-            <Col span={12}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.nodeMemoryUsage, 280, 'low', 5)} />
-            </Col>
-            <Col span={12}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.loadSaturation, 280, 'low', 6)} />
-            </Col>
-            <Col span={12}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.networkTraffic, 280, 'low', 6)} />
-            </Col>
-          </Row>
-        </Card>
-
-        {/* Pod 情况 - 最后加载 */}
-        <Card size="small" title="Pod 情况">
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.podAbnormalList, 320, 'low', 7)} />
-            </Col>
-            <Col span={12}>
-              <GrafanaPanel {...getPanelProps(PANEL_IDS.podAbnormalDistribution, 320, 'low', 7)} />
-            </Col>
-          </Row>
-        </Card>
-      </Card>
-    </div>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={handleRefresh}
+          >
+            刷新
+          </Button>
+        </Space>
+      }
+      styles={{ body: { padding: 0, position: 'relative', minHeight: 900 } }}
+    >
+      {/* 加载状态 */}
+      {loading && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 10,
+          textAlign: 'center',
+        }}>
+          <Spin size="large" />
+          <div style={{ marginTop: 16, color: '#666' }}>监控数据加载中...</div>
+        </div>
+      )}
+      
+      {/* 整个 Dashboard iframe */}
+      <iframe
+        key={`${refreshKey}-${clusterId}`}
+        src={dashboardUrl}
+        width="100%"
+        height="900"
+        frameBorder="0"
+        style={{ border: 'none', display: 'block' }}
+        title="Grafana Cluster Monitoring Dashboard"
+        onLoad={handleIframeLoad}
+      />
+    </Card>
   );
 };
 
 export default ClusterMonitoringPanels;
-
