@@ -445,3 +445,86 @@ export interface SSHConfig {
   password?: string;
   private_key?: string;
 }
+
+// ========== 权限管理类型 ==========
+
+// 权限类型常量
+export type PermissionType = 'admin' | 'ops' | 'dev' | 'readonly' | 'custom';
+
+// 权限类型信息
+export interface PermissionTypeInfo {
+  type: PermissionType;
+  name: string;
+  description: string;
+  resources: string[];
+  actions: string[];
+  allowPartialNamespaces: boolean;  // 是否允许选择部分命名空间
+  requireAllNamespaces: boolean;    // 是否必须选择全部命名空间
+}
+
+// 用户组
+export interface UserGroup {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  users?: User[];
+}
+
+// 集群权限配置
+export interface ClusterPermission {
+  id: number;
+  cluster_id: number;
+  cluster_name?: string;
+  user_id?: number;
+  username?: string;
+  user_group_id?: number;
+  user_group_name?: string;
+  permission_type: PermissionType;
+  permission_name: string;
+  namespaces: string[];
+  custom_role_ref?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// 创建集群权限请求
+export interface CreateClusterPermissionRequest {
+  cluster_id: number;
+  user_id?: number;
+  user_group_id?: number;
+  permission_type: PermissionType;
+  namespaces?: string[];
+  custom_role_ref?: string;
+}
+
+// 更新集群权限请求
+export interface UpdateClusterPermissionRequest {
+  permission_type?: PermissionType;
+  namespaces?: string[];
+  custom_role_ref?: string;
+}
+
+// 我的权限响应
+export interface MyPermissionsResponse {
+  cluster_id: number;
+  cluster_name: string;
+  permission_type: PermissionType;
+  permission_name: string;
+  namespaces: string[];
+  allowed_actions: string[];
+  custom_role_ref?: string;
+}
+
+// 创建用户组请求
+export interface CreateUserGroupRequest {
+  name: string;
+  description?: string;
+}
+
+// 更新用户组请求
+export interface UpdateUserGroupRequest {
+  name: string;
+  description?: string;
+}

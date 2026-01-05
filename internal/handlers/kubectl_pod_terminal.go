@@ -21,12 +21,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
-	kubectlPodNamespace    = "rbac"
+	kubectlPodNamespace    = "kubepolaris-system"
 	kubectlPodImage        = "registry.cn-hangzhou.aliyuncs.com/clay-wangzhi/kubectl:v0.1"
-	kubectlPodSA           = "kubepolaris-sa"
 	kubectlPodPrefix       = "kubepolaris-kubectl-"
 	kubectlIdleTimeout     = 1 * time.Hour
 	kubectlCleanupInterval = 10 * time.Minute
@@ -71,6 +71,31 @@ func (h *KubectlPodTerminalHandler) HandleKubectlPodTerminal(c *gin.Context) {
 
 	userID := c.GetUint("user_id")
 
+	// 获取用户的集群权限，确定使用哪个 ServiceAccount
+	permissionType := "readonly" // 默认只读权限
+	var namespaces []string
+	var customRoleRef string
+	
+	if perm, exists := c.Get("cluster_permission"); exists {
+		if cp, ok := perm.(*models.ClusterPermission); ok && cp != nil {
+			permissionType = cp.PermissionType
+			namespaces = cp.GetNamespaceList()
+			customRoleRef = cp.CustomRoleRef
+		}
+	}
+
+	// 使用 RBACService 获取有效的 ServiceAccount
+	rbacSvc := services.NewRBACService()
+	rbacConfig := &services.UserRBACConfig{
+		UserID:         userID,
+		PermissionType: permissionType,
+		Namespaces:     namespaces,
+		ClusterRoleRef: customRoleRef,
+	}
+	serviceAccount := rbacSvc.GetEffectiveServiceAccount(rbacConfig)
+
+	logger.Info("用户kubectl终端权限", "userID", userID, "permissionType", permissionType, "namespaces", namespaces, "serviceAccount", serviceAccount)
+
 	// 获取集群信息
 	cluster, err := h.clusterService.GetCluster(uint(clusterID))
 	if err != nil {
@@ -91,9 +116,10 @@ func (h *KubectlPodTerminalHandler) HandleKubectlPodTerminal(c *gin.Context) {
 		return
 	}
 
-	// 创建或获取 kubectl Pod
-	podName := fmt.Sprintf("%s%d", kubectlPodPrefix, userID)
-	if err := h.ensureKubectlPod(client, podName, userID); err != nil {
+	// 创建或获取 kubectl Pod，使用对应权限的 ServiceAccount
+	// Pod 名称包含权限类型，确保不同权限使用不同的 Pod
+	podName := fmt.Sprintf("%s%d-%s", kubectlPodPrefix, userID, permissionType)
+	if err := h.ensureKubectlPod(client, podName, userID, serviceAccount, permissionType); err != nil {
 		logger.Error("创建kubectl Pod失败", "error", err, "podName", podName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("创建kubectl Pod失败: %v", err)})
 		return
@@ -142,7 +168,7 @@ func (h *KubectlPodTerminalHandler) HandleKubectlPodTerminal(c *gin.Context) {
 }
 
 // ensureKubectlPod 确保 kubectl Pod 存在
-func (h *KubectlPodTerminalHandler) ensureKubectlPod(client *kubernetes.Clientset, podName string, userID uint) error {
+func (h *KubectlPodTerminalHandler) ensureKubectlPod(client *kubernetes.Clientset, podName string, userID uint, serviceAccount string, permissionType string) error {
 	ctx := context.Background()
 
 	// 检查 Pod 是否已存在
@@ -150,7 +176,7 @@ func (h *KubectlPodTerminalHandler) ensureKubectlPod(client *kubernetes.Clientse
 	if err == nil {
 		// Pod 存在
 		if existingPod.Status.Phase == corev1.PodRunning {
-			logger.Info("复用已存在的kubectl Pod", "pod", podName)
+			logger.Info("复用已存在的kubectl Pod", "pod", podName, "sa", serviceAccount)
 			return nil // 可以复用
 		}
 		if existingPod.Status.Phase == corev1.PodFailed || existingPod.Status.Phase == corev1.PodSucceeded {
@@ -169,22 +195,25 @@ func (h *KubectlPodTerminalHandler) ensureKubectlPod(client *kubernetes.Clientse
 		return err
 	}
 
-	// 创建新 Pod
-	logger.Info("创建新的kubectl Pod", "pod", podName, "user", userID)
+	// 创建新 Pod，使用对应权限的 ServiceAccount
+	logger.Info("创建新的kubectl Pod", "pod", podName, "user", userID, "sa", serviceAccount, "permissionType", permissionType)
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
 			Namespace: kubectlPodNamespace,
 			Labels: map[string]string{
-				"app":     "kubepolaris-kubectl",
-				"user-id": fmt.Sprintf("%d", userID),
+				"app":             "kubepolaris-kubectl",
+				"user-id":         fmt.Sprintf("%d", userID),
+				"permission-type": permissionType,
 			},
 			Annotations: map[string]string{
-				"kubepolaris.io/last-activity": time.Now().Format(time.RFC3339),
+				"kubepolaris.io/last-activity":    time.Now().Format(time.RFC3339),
+				"kubepolaris.io/permission-type":  permissionType,
+				"kubepolaris.io/service-account":  serviceAccount,
 			},
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: kubectlPodSA,
+			ServiceAccountName: serviceAccount, // 使用对应权限的 ServiceAccount
 			Containers: []corev1.Container{{
 				Name:    "kubectl",
 				Image:   kubectlPodImage,
@@ -325,8 +354,20 @@ func (h *KubectlPodTerminalHandler) cleanupClusterIdlePods(cluster *models.Clust
 
 // createK8sConfig 创建 K8s 配置
 func (h *KubectlPodTerminalHandler) createK8sConfig(cluster *models.Cluster) (*rest.Config, error) {
+	// 优先使用 Kubeconfig 方式
+	if cluster.KubeconfigEnc != "" {
+		config, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeconfigEnc))
+		if err != nil {
+			return nil, fmt.Errorf("解析kubeconfig失败: %v", err)
+		}
+		config.Timeout = 30 * time.Second
+		return config, nil
+	}
+
+	// 回退到 Token 方式
 	config := &rest.Config{
-		Host: cluster.APIServer,
+		Host:    cluster.APIServer,
+		Timeout: 30 * time.Second,
 	}
 
 	if cluster.SATokenEnc != "" {

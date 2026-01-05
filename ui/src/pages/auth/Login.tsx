@@ -185,6 +185,11 @@ const Login: React.FC = () => {
         tokenManager.setToken(response.data.token);
         tokenManager.setUser(response.data.user);
         tokenManager.setExpiresAt(response.data.expires_at);
+        
+        // 保存权限信息
+        if (response.data.permissions) {
+          tokenManager.setPermissions(response.data.permissions);
+        }
 
         message.success('登录成功');
         navigate(from, { replace: true });

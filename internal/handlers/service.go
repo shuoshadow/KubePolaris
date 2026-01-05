@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"kubepolaris/internal/config"
 	"kubepolaris/internal/k8s"
+	"kubepolaris/internal/middleware"
 	"kubepolaris/internal/services"
 	"kubepolaris/pkg/logger"
 
@@ -108,12 +110,29 @@ func (h *ServiceHandler) ListServices(c *gin.Context) {
 
 	clientset := k8sClient.GetClientset()
 
+	// 检查命名空间权限
+	nsInfo, hasAccess := middleware.CheckNamespacePermission(c, namespace)
+	if !hasAccess {
+		c.JSON(http.StatusForbidden, gin.H{
+			"code":    403,
+			"message": fmt.Sprintf("无权访问命名空间: %s", namespace),
+		})
+		return
+	}
+
 	// 获取Services
 	services, err := h.getServices(clientset, namespace)
 	if err != nil {
 		logger.Error("获取Services失败", "error", err, "clusterId", clusterID)
 		c.JSON(500, gin.H{"code": 500, "message": fmt.Sprintf("获取Services失败: %v", err), "data": nil})
 		return
+	}
+
+	// 根据命名空间权限过滤
+	if !nsInfo.HasAllAccess && namespace == "" {
+		services = middleware.FilterResourcesByNamespace(c, services, func(s ServiceInfo) string {
+			return s.Namespace
+		})
 	}
 
 	// 过滤和搜索

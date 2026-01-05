@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -539,8 +540,20 @@ func (h *PodTerminalHandler) closeSession(session *PodTerminalSession) {
 
 // createK8sConfig 创建Kubernetes配置
 func (h *PodTerminalHandler) createK8sConfig(cluster *models.Cluster) (*rest.Config, error) {
+	// 优先使用 Kubeconfig 方式
+	if cluster.KubeconfigEnc != "" {
+		config, err := clientcmd.RESTConfigFromKubeConfig([]byte(cluster.KubeconfigEnc))
+		if err != nil {
+			return nil, fmt.Errorf("解析kubeconfig失败: %v", err)
+		}
+		config.Timeout = 30 * time.Second
+		return config, nil
+	}
+
+	// 回退到 Token 方式
 	config := &rest.Config{
-		Host: cluster.APIServer,
+		Host:    cluster.APIServer,
+		Timeout: 30 * time.Second,
 	}
 
 	if cluster.SATokenEnc != "" {

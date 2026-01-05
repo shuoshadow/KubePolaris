@@ -93,12 +93,13 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		auth.POST("/change-password", middleware.AuthRequired(cfg.JWT.Secret), authHandler.ChangePassword)
 	}
 
+	// 创建权限中间件（在受保护路由和 WebSocket 路由中共用）
+	permMiddleware := middleware.NewPermissionMiddleware(permissionSvc)
+
 	// 受保护的业务路由
 	protected := api.Group("")
 	protected.Use(middleware.AuthRequired(cfg.JWT.Secret))
 	{
-		// 创建权限中间件
-		permMiddleware := middleware.NewPermissionMiddleware(permissionSvc)
 
 		// clusters 根分组
 		clusters := protected.Group("/clusters")
@@ -320,16 +321,16 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 
 				// services 子分组
 				serviceHandler := handlers.NewServiceHandler(db, cfg, clusterSvc, k8sMgr)
-				services := cluster.Group("/services")
+				svcGroup := cluster.Group("/services")
 				{
-					services.GET("", serviceHandler.ListServices)
-					services.GET("/namespaces", serviceHandler.GetServiceNamespaces)
-					services.POST("", serviceHandler.CreateService)
-					services.GET("/:namespace/:name", serviceHandler.GetService)
-					services.PUT("/:namespace/:name", serviceHandler.UpdateService)
-					services.GET("/:namespace/:name/yaml", serviceHandler.GetServiceYAML)
-					services.GET("/:namespace/:name/endpoints", serviceHandler.GetServiceEndpoints)
-					services.DELETE("/:namespace/:name", serviceHandler.DeleteService)
+					svcGroup.GET("", serviceHandler.ListServices)
+					svcGroup.GET("/namespaces", serviceHandler.GetServiceNamespaces)
+					svcGroup.POST("", serviceHandler.CreateService)
+					svcGroup.GET("/:namespace/:name", serviceHandler.GetService)
+					svcGroup.PUT("/:namespace/:name", serviceHandler.UpdateService)
+					svcGroup.GET("/:namespace/:name/yaml", serviceHandler.GetServiceYAML)
+					svcGroup.GET("/:namespace/:name/endpoints", serviceHandler.GetServiceEndpoints)
+					svcGroup.DELETE("/:namespace/:name", serviceHandler.DeleteService)
 				}
 
 				// ingresses 子分组
@@ -471,8 +472,8 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		}
 
 		// permissions - 权限管理
-		permissionHandler := handlers.NewPermissionHandler(permissionSvc)
 		globalRbacSvc := services.NewRBACService()
+		permissionHandler := handlers.NewPermissionHandler(permissionSvc, clusterSvc, globalRbacSvc)
 		globalRbacHandler := handlers.NewRBACHandler(clusterSvc, globalRbacSvc)
 		permissions := protected.Group("/permissions")
 		{
@@ -526,20 +527,25 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		kubectlPod := handlers.NewKubectlPodTerminalHandler(clusterSvc, auditSvc)
 		podHandler := handlers.NewPodHandler(db, cfg, clusterSvc, k8sMgr)
 
-		// 集群级 kubectl 终端（旧方案：本地执行）
-		ws.GET("/clusters/:clusterID/terminal", kctl.HandleKubectlTerminal)
-
-		// 集群级 kubectl 终端（新方案：Pod 模式，支持 tab 补全）
-		ws.GET("/clusters/:clusterID/kubectl", kubectlPod.HandleKubectlPodTerminal)
-
-		// 节点 SSH 终端
+		// 节点 SSH 终端（不需要集群权限检查）
 		ws.GET("/ssh/terminal", ssh.SSHConnect)
 
-		// Pod 终端：使用 kubectl exec 连接到 Pod
-		ws.GET("/clusters/:clusterID/pods/:namespace/:name/terminal", podTerminal.HandlePodTerminal)
+		// 集群相关的 WebSocket 路由（需要集群权限检查）
+		wsCluster := ws.Group("/clusters/:clusterID")
+		wsCluster.Use(permMiddleware.ClusterAccessRequired()) // 启用集群权限检查
+		{
+			// 集群级 kubectl 终端（旧方案：本地执行）
+			wsCluster.GET("/terminal", kctl.HandleKubectlTerminal)
 
-		// Pod 日志流式传输
-		ws.GET("/clusters/:clusterID/pods/:namespace/:name/logs", podHandler.StreamPodLogs)
+			// 集群级 kubectl 终端（新方案：Pod 模式，支持 tab 补全）
+			wsCluster.GET("/kubectl", kubectlPod.HandleKubectlPodTerminal)
+
+			// Pod 终端：使用 kubectl exec 连接到 Pod
+			wsCluster.GET("/pods/:namespace/:name/terminal", podTerminal.HandlePodTerminal)
+
+			// Pod 日志流式传输
+			wsCluster.GET("/pods/:namespace/:name/logs", podHandler.StreamPodLogs)
+		}
 	}
 
 	// TODO:

@@ -16,6 +16,7 @@ import (
 
 	"kubepolaris/internal/config"
 	"kubepolaris/internal/k8s"
+	"kubepolaris/internal/middleware"
 	"kubepolaris/internal/services"
 	"kubepolaris/pkg/logger"
 )
@@ -103,6 +104,16 @@ func (h *SecretHandler) GetSecrets(c *gin.Context) {
 		return
 	}
 
+	// 检查命名空间权限
+	nsInfo, hasAccess := middleware.CheckNamespacePermission(c, namespace)
+	if !hasAccess {
+		c.JSON(http.StatusForbidden, gin.H{
+			"code":    403,
+			"message": fmt.Sprintf("无权访问命名空间: %s", namespace),
+		})
+		return
+	}
+
 	// 从 informer 缓存获取 Secret 列表
 	var secrets []corev1.Secret
 	sel := labels.Everything()
@@ -131,6 +142,13 @@ func (h *SecretHandler) GetSecrets(c *gin.Context) {
 		for _, sec := range secs {
 			secrets = append(secrets, *sec)
 		}
+	}
+
+	// 根据命名空间权限过滤
+	if !nsInfo.HasAllAccess && (namespace == "" || namespace == "_all_") {
+		secrets = middleware.FilterResourcesByNamespace(c, secrets, func(s corev1.Secret) string {
+			return s.Namespace
+		})
 	}
 
 	// 过滤和转换

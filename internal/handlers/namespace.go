@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"kubepolaris/internal/k8s"
+	"kubepolaris/internal/middleware"
 	"kubepolaris/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -73,9 +74,17 @@ func (h *NamespaceHandler) GetNamespaces(c *gin.Context) {
 		return
 	}
 
+	// 获取用户的命名空间权限
+	allowedNs, hasAllAccess := middleware.GetAllowedNamespaces(c)
+
 	// 构建响应数据
 	var namespaceList []NamespaceResponse
 	for _, ns := range namespaces {
+		// 非全部权限用户，只返回有权限的命名空间
+		if !hasAllAccess && !middleware.HasNamespaceAccess(c, ns.Name) {
+			continue
+		}
+		
 		namespaceResp := NamespaceResponse{
 			Name:              ns.Name,
 			Status:            string(ns.Status.Phase),
@@ -86,10 +95,15 @@ func (h *NamespaceHandler) GetNamespaces(c *gin.Context) {
 		namespaceList = append(namespaceList, namespaceResp)
 	}
 
+	// 返回结果，同时告知前端用户是否有全部权限
 	c.JSON(http.StatusOK, gin.H{
 		"code":    http.StatusOK,
 		"message": "success",
 		"data":    namespaceList,
+		"meta": gin.H{
+			"hasAllAccess":      hasAllAccess,
+			"allowedNamespaces": allowedNs,
+		},
 	})
 }
 
@@ -97,6 +111,15 @@ func (h *NamespaceHandler) GetNamespaces(c *gin.Context) {
 func (h *NamespaceHandler) GetNamespaceDetail(c *gin.Context) {
 	clusterIDStr := c.Param("clusterID")
 	namespaceName := c.Param("namespace")
+
+	// 检查命名空间访问权限
+	if !middleware.HasNamespaceAccess(c, namespaceName) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"code":    403,
+			"message": "无权访问命名空间: " + namespaceName,
+		})
+		return
+	}
 
 	// 获取集群信息
 	clusterID := parseClusterID(clusterIDStr)
@@ -180,6 +203,16 @@ func (h *NamespaceHandler) GetNamespaceDetail(c *gin.Context) {
 
 // CreateNamespace 创建命名空间
 func (h *NamespaceHandler) CreateNamespace(c *gin.Context) {
+	// 检查是否有管理员权限（只有管理员才能创建命名空间）
+	permission := middleware.GetClusterPermission(c)
+	if permission == nil || permission.PermissionType != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"code":    403,
+			"message": "只有管理员才能创建命名空间",
+		})
+		return
+	}
+
 	clusterIDStr := c.Param("clusterID")
 	clusterID := parseClusterID(clusterIDStr)
 	cluster, err := h.clusterService.GetCluster(clusterID)
@@ -260,6 +293,16 @@ func (h *NamespaceHandler) CreateNamespace(c *gin.Context) {
 
 // DeleteNamespace 删除命名空间
 func (h *NamespaceHandler) DeleteNamespace(c *gin.Context) {
+	// 检查是否有管理员权限（只有管理员才能删除命名空间）
+	permission := middleware.GetClusterPermission(c)
+	if permission == nil || permission.PermissionType != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"code":    403,
+			"message": "只有管理员才能删除命名空间",
+		})
+		return
+	}
+
 	clusterIDStr := c.Param("clusterID")
 	namespaceName := c.Param("namespace")
 

@@ -1,5 +1,5 @@
 import { request } from '../utils/api';
-import type { ApiResponse, User, LDAPConfig, SSHConfig } from '../types';
+import type { ApiResponse, User, LDAPConfig, SSHConfig, MyPermissionsResponse } from '../types';
 
 // 登录请求参数
 export interface LoginRequest {
@@ -13,6 +13,7 @@ export interface LoginResponse {
   token: string;
   user: User;
   expires_at: number;
+  permissions?: MyPermissionsResponse[];
 }
 
 // 认证状态
@@ -161,6 +162,29 @@ export const tokenManager = {
     localStorage.removeItem('user');
   },
 
+  // 获取权限信息
+  getPermissions: (): MyPermissionsResponse[] => {
+    const permStr = localStorage.getItem('permissions');
+    if (permStr) {
+      try {
+        return JSON.parse(permStr);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  },
+
+  // 设置权限信息
+  setPermissions: (permissions: MyPermissionsResponse[]): void => {
+    localStorage.setItem('permissions', JSON.stringify(permissions));
+  },
+
+  // 移除权限信息
+  removePermissions: (): void => {
+    localStorage.removeItem('permissions');
+  },
+
   // 检查是否已登录
   isLoggedIn: (): boolean => {
     const token = localStorage.getItem('token');
@@ -174,9 +198,7 @@ export const tokenManager = {
     const expiresAtNum = parseInt(expiresAt, 10);
     if (Date.now() / 1000 > expiresAtNum) {
       // Token 已过期，清理存储
-      tokenManager.removeToken();
-      tokenManager.removeUser();
-      localStorage.removeItem('token_expires_at');
+      tokenManager.clear();
       return false;
     }
 
@@ -193,6 +215,7 @@ export const tokenManager = {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('token_expires_at');
+    localStorage.removeItem('permissions');
   },
 };
 
