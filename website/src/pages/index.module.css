@@ -1,0 +1,275 @@
+/* ==================== Hero Section ==================== */
+.heroBanner {
+  padding: 6rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 10;
+}
+
+.heroHighlight {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.25rem 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  font-size: 1.25rem;
+  backdrop-filter: blur(10px);
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.heroStats {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.heroStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.heroStatNumber {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.heroStatLabel {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 0.25rem;
+}
+
+/* ==================== Section Common ==================== */
+.sectionHeader {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.sectionTitle {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #0066cc 0%, #00a8e8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sectionSubtitle {
+  font-size: 1.25rem;
+  color: var(--ifm-font-color-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ==================== Features Section ==================== */
+.features {
+  padding: 6rem 0;
+  background: var(--ifm-background-surface-color);
+}
+
+.featureGrid {
+  gap: 2rem;
+}
+
+/* ==================== Use Cases Section ==================== */
+.useCases {
+  padding: 6rem 0;
+}
+
+.useCaseGrid {
+  gap: 2rem;
+}
+
+.useCaseCard {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 16px;
+  padding: 2.5rem;
+  height: 100%;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+[data-theme='dark'] .useCaseCard {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+}
+
+.useCaseCard:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.useCaseIcon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+}
+
+.useCaseTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.useCaseDescription {
+  color: var(--ifm-font-color-secondary);
+  line-height: 1.7;
+}
+
+/* ==================== Quick Start Section ==================== */
+.quickStart {
+  padding: 6rem 0;
+  background: var(--ifm-background-surface-color);
+}
+
+.codeBlock {
+  max-width: 800px;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.codeHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #1e293b;
+}
+
+.codeDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.codeTitle {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.codeContent {
+  margin: 0;
+  padding: 1.5rem;
+  background: #0f172a;
+  border-radius: 0;
+}
+
+.codeContent code {
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.quickStartLinks {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+/* ==================== CTA Section ==================== */
+.cta {
+  padding: 6rem 0;
+  background: linear-gradient(135deg, #0066cc 0%, #00a8e8 50%, #2dd4bf 100%);
+  text-align: center;
+}
+
+.ctaContent {
+  position: relative;
+  z-index: 10;
+}
+
+.ctaTitle {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 1rem;
+}
+
+.ctaSubtitle {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.9);
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+
+.ctaButtons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.ctaButtons .button--outline {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  color: #fff;
+}
+
+.ctaButtons .button--outline:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #fff;
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 996px) {
+  .heroStats {
+    gap: 2rem;
+  }
+
+  .heroStatNumber {
+    font-size: 2rem;
+  }
+
+  .sectionTitle {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .heroBanner {
+    padding: 4rem 1rem;
+  }
+
+  .buttons {
+    flex-direction: column;
+  }
+
+  .heroStats {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .features,
+  .useCases,
+  .quickStart,
+  .cta {
+    padding: 4rem 1rem;
+  }
+
+  .ctaButtons {
+    flex-direction: column;
+  }
+
+  .codeBlock {
+    margin: 0 1rem;
+  }
+}
+
