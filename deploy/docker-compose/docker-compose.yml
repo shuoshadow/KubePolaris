@@ -15,7 +15,7 @@ services:
   # MySQL 数据库
   # ==========================================
   mysql:
-    image: mysql:8.0
+    image: registry.cn-hangzhou.aliyuncs.com/clay-wangzhi/mysql:8.0
     container_name: kubepolaris-mysql
     restart: unless-stopped
     environment:
@@ -28,16 +28,15 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ../docker/mysql/init:/docker-entrypoint-initdb.d:ro
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     networks:
       - kubepolaris-network
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD && mysql -h localhost -u kubepolaris -p$$MYSQL_PASSWORD -e 'SELECT 1' kubepolaris || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
 
   # ==========================================
   # KubePolaris 后端
@@ -46,7 +45,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/kubepolaris/Dockerfile.backend
-    image: kubepolaris/backend:dev
+    image: registry.cn-hangzhou.aliyuncs.com/clay-wangzhi/kubepolaris-backend:latest
     container_name: kubepolaris-backend
     restart: unless-stopped
     depends_on:
@@ -81,7 +80,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 100s
 
   # ==========================================
   # KubePolaris 前端
@@ -90,7 +89,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/kubepolaris/Dockerfile.frontend
-    image: kubepolaris/frontend:dev
+    image: registry.cn-hangzhou.aliyuncs.com/clay-wangzhi/kubepolaris-frontend:latest
     container_name: kubepolaris-frontend
     restart: unless-stopped
     depends_on:
@@ -112,7 +111,7 @@ services:
   # Grafana
   # ==========================================
   grafana:
-    image: grafana/grafana:10.2.0
+    image: registry.cn-hangzhou.aliyuncs.com/clay-wangzhi/grafana:10.2.0
     container_name: kubepolaris-grafana
     restart: unless-stopped
     environment:
@@ -146,7 +145,7 @@ services:
   # Grafana 初始化（自动生成 API Key）
   # ==========================================
   grafana-init:
-    image: curlimages/curl:latest
+    image: registry.cn-hangzhou.aliyuncs.com/clay-wangzhi/curl:8.16.0
     container_name: kubepolaris-grafana-init
     depends_on:
       grafana:
@@ -162,7 +161,7 @@ services:
       - |
         echo "⏳ 等待 Dashboard 加载完成..."
         sleep 5
-        
+
         echo "🔧 设置 KubePolaris 文件夹权限..."
         curl -s -X POST \
           -u "$${GRAFANA_USER}:$${GRAFANA_PASSWORD}" \
@@ -170,13 +169,13 @@ services:
           -d '{"items":[{"role":"Viewer","permission":1},{"role":"Editor","permission":2}]}' \
           "$${GRAFANA_URL}/api/folders/kubepolaris-folder/permissions"
         echo " ✅ 权限设置完成"
-        
+
         echo ""
         echo "🔑 创建 Service Account 和 API Token..."
-        
+
         SA_EXISTS=$$(curl -s -u "$${GRAFANA_USER}:$${GRAFANA_PASSWORD}" \
           "$${GRAFANA_URL}/api/serviceaccounts/search?query=kubepolaris" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
-        
+
         if [ -z "$$SA_EXISTS" ]; then
           echo "  📝 创建新的 Service Account..."
           SA_RESULT=$$(curl -s -X POST \
@@ -190,7 +189,7 @@ services:
           SA_ID=$$SA_EXISTS
           echo "  ℹ️  Service Account 已存在，ID: $$SA_ID"
         fi
-        
+
         curl -s -u "$${GRAFANA_USER}:$${GRAFANA_PASSWORD}" \
           "$${GRAFANA_URL}/api/serviceaccounts/$$SA_ID/tokens" | \
           grep -o '"id":[0-9]*' | cut -d: -f2 | while read TOKEN_ID; do
@@ -198,16 +197,16 @@ services:
               -u "$${GRAFANA_USER}:$${GRAFANA_PASSWORD}" \
               "$${GRAFANA_URL}/api/serviceaccounts/$$SA_ID/tokens/$$TOKEN_ID"
           done
-        
+
         echo "  🔐 生成新的 API Token..."
         TOKEN_RESULT=$$(curl -s -X POST \
           -u "$${GRAFANA_USER}:$${GRAFANA_PASSWORD}" \
           -H "Content-Type: application/json" \
           -d '{"name":"kubepolaris-token","secondsToLive":0}' \
           "$${GRAFANA_URL}/api/serviceaccounts/$$SA_ID/tokens")
-        
+
         API_KEY=$$(echo "$$TOKEN_RESULT" | grep -o '"key":"[^"]*"' | cut -d'"' -f4)
-        
+
         if [ -n "$$API_KEY" ]; then
           echo "$$API_KEY" > /secrets/grafana_api_key
           echo "  ✅ API Token 已保存到 /secrets/grafana_api_key"

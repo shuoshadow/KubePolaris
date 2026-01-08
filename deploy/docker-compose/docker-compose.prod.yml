@@ -13,7 +13,7 @@ services:
   # MySQL 数据库（生产环境建议使用外部数据库）
   # ==========================================
   mysql:
-    image: mysql:8.0
+    image: registry.cn-hangzhou.aliyuncs.com/clay-wangzhi/mysql:8.0
     container_name: kubepolaris-mysql
     restart: always
     environment:
@@ -37,10 +37,10 @@ services:
     networks:
       - kubepolaris-network
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD && mysql -h localhost -u kubepolaris -p$$MYSQL_PASSWORD -e 'SELECT 1' kubepolaris || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
       start_period: 60s
     deploy:
       resources:
@@ -56,7 +56,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/kubepolaris/Dockerfile
-    image: kubepolaris/kubepolaris:${VERSION}
+    image: registry.cn-hangzhou.aliyuncs.com/clay-wangzhi/kubepolaris:${VERSION}
     container_name: kubepolaris
     restart: always
     depends_on:
@@ -91,7 +91,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 100s
     deploy:
       resources:
         limits:
@@ -110,7 +110,7 @@ services:
   # Grafana
   # ==========================================
   grafana:
-    image: grafana/grafana:10.2.0
+    image: registry.cn-hangzhou.aliyuncs.com/clay-wangzhi/grafana:10.2.0
     container_name: kubepolaris-grafana
     restart: always
     environment:
@@ -141,7 +141,7 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
     deploy:
       resources:
         limits:
@@ -155,7 +155,7 @@ services:
   # Grafana 初始化
   # ==========================================
   grafana-init:
-    image: curlimages/curl:latest
+    image: registry.cn-hangzhou.aliyuncs.com/clay-wangzhi/curl:8.16.0
     container_name: kubepolaris-grafana-init
     depends_on:
       grafana:

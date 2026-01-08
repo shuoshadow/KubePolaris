@@ -53,9 +53,11 @@ COPY deploy/docker/kubepolaris/nginx-frontend.conf /etc/nginx/nginx.conf
 # 复制静态文件
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 创建必要的目录
+# 创建必要的目录并设置权限
 RUN mkdir -p /var/cache/nginx /var/run && \
-    chown -R nginx:nginx /var/cache/nginx /var/run /usr/share/nginx/html
+    chown -R nginx:nginx /var/cache/nginx /var/run /usr/share/nginx/html && \
+    chown nginx:nginx /etc/nginx/nginx.conf && \
+    chmod 644 /etc/nginx/nginx.conf
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
