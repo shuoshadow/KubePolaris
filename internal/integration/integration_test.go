@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -91,15 +92,13 @@ func (s *IntegrationTestSuite) setupRouter() *gin.Engine {
 	{
 		// 认证路由
 		api.POST("/auth/login", authHandler.Login)
-		api.POST("/auth/register", authHandler.Register)
 
 		// 集群路由
 		clusters := api.Group("/clusters")
 		{
 			clusters.GET("", clusterHandler.GetClusters)
-			clusters.POST("", clusterHandler.CreateCluster)
+			clusters.POST("/import", clusterHandler.ImportCluster)
 			clusters.GET("/:id", clusterHandler.GetCluster)
-			clusters.PUT("/:id", clusterHandler.UpdateCluster)
 			clusters.DELETE("/:id", clusterHandler.DeleteCluster)
 		}
 	}
@@ -109,27 +108,27 @@ func (s *IntegrationTestSuite) setupRouter() *gin.Engine {
 
 // TestClusterCRUD 测试集群 CRUD 操作
 func (s *IntegrationTestSuite) TestClusterCRUD() {
-	// 1. 创建集群
-	createReq := map[string]interface{}{
+	// 1. 导入集群
+	importReq := map[string]interface{}{
 		"name":       "test_integration_cluster",
 		"apiServer":  "https://kubernetes.example.com:6443",
-		"kubeConfig": "test-config-content",
+		"kubeconfig": "test-config-content",
 	}
-	body, _ := json.Marshal(createReq)
+	body, _ := json.Marshal(importReq)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/clusters", bytes.NewBuffer(body))
+	req, _ := http.NewRequest("POST", "/api/clusters/import", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	s.router.ServeHTTP(w, req)
 
 	s.Equal(http.StatusOK, w.Code)
 
-	var createResp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &createResp)
-	s.Equal(float64(200), createResp["code"])
+	var importResp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &importResp)
+	s.Equal(float64(200), importResp["code"])
 
-	// 获取创建的集群 ID
-	data := createResp["data"].(map[string]interface{})
+	// 获取导入的集群 ID
+	data := importResp["data"].(map[string]interface{})
 	clusterID := int(data["id"].(float64))
 
 	// 2. 获取集群列表
@@ -144,19 +143,7 @@ func (s *IntegrationTestSuite) TestClusterCRUD() {
 	req, _ = http.NewRequest("GET", "/api/clusters/"+string(rune(clusterID)), nil)
 	s.router.ServeHTTP(w, req)
 
-	// 4. 更新集群
-	updateReq := map[string]interface{}{
-		"name":        "test_integration_cluster_updated",
-		"description": "Updated description",
-	}
-	body, _ = json.Marshal(updateReq)
-
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("PUT", "/api/clusters/"+string(rune(clusterID)), bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	s.router.ServeHTTP(w, req)
-
-	// 5. 删除集群
+	// 4. 删除集群
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/api/clusters/"+string(rune(clusterID)), nil)
 	s.router.ServeHTTP(w, req)
@@ -164,28 +151,27 @@ func (s *IntegrationTestSuite) TestClusterCRUD() {
 
 // TestAuthFlow 测试认证流程
 func (s *IntegrationTestSuite) TestAuthFlow() {
-	// 1. 注册用户
-	registerReq := map[string]string{
-		"username": "test_integration_user",
-		"password": "Test@123456",
-		"email":    "test@example.com",
+	// 1. 直接在数据库中创建测试用户（因为系统没有注册接口）
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("Test@123456"+"test_salt"), bcrypt.DefaultCost)
+	testUser := &models.User{
+		Username:     "test_integration_user",
+		PasswordHash: string(hashedPassword),
+		Salt:         "test_salt",
+		Email:        "test@example.com",
+		Status:       "active",
+		AuthType:     "local",
 	}
-	body, _ := json.Marshal(registerReq)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/auth/register", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	s.router.ServeHTTP(w, req)
+	s.db.Create(testUser)
 
 	// 2. 登录
 	loginReq := map[string]string{
 		"username": "test_integration_user",
 		"password": "Test@123456",
 	}
-	body, _ = json.Marshal(loginReq)
+	body, _ := json.Marshal(loginReq)
 
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	s.router.ServeHTTP(w, req)
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -86,12 +87,11 @@ func (s *APIIntegrationTestSuite) setupRouter() *gin.Engine {
 	api := router.Group("/api")
 	{
 		api.POST("/auth/login", authHandler.Login)
-		api.POST("/auth/register", authHandler.Register)
 
 		clusters := api.Group("/clusters")
 		{
 			clusters.GET("", clusterHandler.GetClusters)
-			clusters.POST("", clusterHandler.CreateCluster)
+			clusters.POST("/import", clusterHandler.ImportCluster)
 			clusters.GET("/:id", clusterHandler.GetCluster)
 			clusters.DELETE("/:id", clusterHandler.DeleteCluster)
 		}
@@ -102,28 +102,27 @@ func (s *APIIntegrationTestSuite) setupRouter() *gin.Engine {
 
 // setupTestUser 创建测试用户
 func (s *APIIntegrationTestSuite) setupTestUser() {
-	// 注册测试用户
-	registerReq := map[string]string{
-		"username": "api_test_user",
-		"password": "ApiTest@123",
-		"email":    "api_test@example.com",
+	// 直接在数据库中创建测试用户（因为系统没有注册接口）
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("ApiTest@123"+"test_salt"), bcrypt.DefaultCost)
+	testUser := &models.User{
+		Username:     "api_test_user",
+		PasswordHash: string(hashedPassword),
+		Salt:         "test_salt",
+		Email:        "api_test@example.com",
+		Status:       "active",
+		AuthType:     "local",
 	}
-	body, _ := json.Marshal(registerReq)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/auth/register", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	s.router.ServeHTTP(w, req)
+	s.db.Create(testUser)
 
 	// 登录获取 token
 	loginReq := map[string]string{
 		"username": "api_test_user",
 		"password": "ApiTest@123",
 	}
-	body, _ = json.Marshal(loginReq)
+	body, _ := json.Marshal(loginReq)
 
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	s.router.ServeHTTP(w, req)
 
