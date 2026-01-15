@@ -277,7 +277,7 @@ const ContainerTab: React.FC<ContainerTabProps> = ({
       
       if (response.code === 200 && response.data) {
         // 使用 raw 字段获取完整的 Deployment 对象
-        const data = response.data as { 
+        const data = response.data as unknown as { 
           raw?: Record<string, unknown> & { spec?: DeploymentSpec }; 
           workload?: Record<string, unknown> & { spec?: DeploymentSpec };
         };
