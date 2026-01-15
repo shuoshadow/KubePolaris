@@ -27,7 +27,8 @@ const KubectlTerminal: React.FC<KubectlTerminalProps> = ({
   
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
-  const [selectedNamespace, setSelectedNamespace] = useState<string>('default');
+  // selectedNamespace 用于接收 WebSocket 消息中的命名空间变更，当前未在 UI 中显示
+  const [, setSelectedNamespace] = useState<string>('default');
   
   // 使用 ref 来保存连接状态，避免闭包问题
   const connectedRef = useRef(false);
