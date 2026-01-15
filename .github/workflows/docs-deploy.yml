@@ -81,5 +81,5 @@ jobs:
         # 使用 Git 将网站代码强制推送到远程的网站目录
         # 并使用 SSH 连接服务器进入网站目录手动切换到最新提交
         run: |
-          git push -f  git@139.196.230.188:/home/git/kubepolaris gh-pages
-          ssh git@139.196.230.188 "cd /home/git/kubepolaris && git reset --hard HEAD"
+          git push -f  kubepolaris@139.196.230.188:/home/kubepolaris/kubepolaris gh-pages
+          ssh kubepolaris@139.196.230.188 "cd /home/kubepolaris/kubepolaris && git reset --hard HEAD"
