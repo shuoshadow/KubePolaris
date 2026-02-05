@@ -5,10 +5,96 @@
 KubePolaris 支持多种部署方式：
 
 1. **Docker Compose 部署**（推荐用于开发/测试）
-2. **Kubernetes 部署**（推荐用于生产环境）
+2. **Kubernetes Helm 部署**（推荐用于生产环境）
 3. **二进制部署**（适用于特殊场景）
 
-本文档主要介绍 Docker Compose 部署方式。
+---
+
+## ☸️ Kubernetes Helm 部署（推荐生产环境）
+
+### 方式一：通过 Helm 仓库安装（推荐）
+
+```bash
+# 1. 添加 Helm 仓库
+helm repo add kubepolaris https://clay-wangzhi.github.io/KubePolaris
+helm repo update
+
+# 2. 搜索可用版本
+helm search repo kubepolaris
+
+# 3. 安装（使用默认配置）
+helm install kubepolaris kubepolaris/kubepolaris \
+  -n kubepolaris --create-namespace
+
+# 4. 或者自定义配置安装
+helm install kubepolaris kubepolaris/kubepolaris \
+  -n kubepolaris --create-namespace \
+  --set mysql.auth.rootPassword=your-root-password \
+  --set mysql.auth.password=your-password \
+  --set backend.config.jwt.secret=your-jwt-secret
+
+# 5. 查看安装状态
+helm status kubepolaris -n kubepolaris
+kubectl get pods -n kubepolaris
+```
+
+### 方式二：下载 Chart 本地安装
+
+```bash
+# 1. 下载 Chart
+helm pull kubepolaris/kubepolaris --untar
+
+# 2. 修改配置
+vim kubepolaris/values.yaml
+
+# 3. 安装
+helm install kubepolaris ./kubepolaris -n kubepolaris --create-namespace
+```
+
+### 方式三：从源码安装
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/clay-wangzhi/KubePolaris.git
+cd KubePolaris
+
+# 2. 安装
+helm install kubepolaris ./deploy/helm/kubepolaris \
+  -n kubepolaris --create-namespace \
+  -f ./deploy/helm/kubepolaris/values.yaml
+```
+
+### Helm 配置说明
+
+详细配置请参考 [Helm Chart README](./helm/kubepolaris/README.md)
+
+常用配置项：
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `mysql.auth.rootPassword` | MySQL root 密码 | `kubepolaris-root` |
+| `mysql.auth.password` | 应用数据库密码 | `kubepolaris123` |
+| `backend.config.jwt.secret` | JWT 密钥 | 随机生成 |
+| `ingress.enabled` | 是否启用 Ingress | `true` |
+| `ingress.hosts[0].host` | 域名 | `kubepolaris.local` |
+| `grafana.enabled` | 是否启用内置 Grafana | `true` |
+
+### 升级和卸载
+
+```bash
+# 升级
+helm repo update
+helm upgrade kubepolaris kubepolaris/kubepolaris -n kubepolaris
+
+# 卸载
+helm uninstall kubepolaris -n kubepolaris
+```
+
+---
+
+## 🐳 Docker Compose 部署（开发/测试）
+
+以下介绍 Docker Compose 部署方式。
 
 ---
 

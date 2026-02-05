@@ -1,0 +1,12 @@
+# chart-releaser 配置文件
+# https://github.com/helm/chart-releaser
+
+# 发布时跳过已存在的版本
+skip-existing: true
+
+# 生成 release notes
+generate-release-notes: true
+
+# 打包选项
+package-path: .cr-release-packages
+index-path: .cr-index
