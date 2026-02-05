@@ -2,8 +2,8 @@ apiVersion: v2
 name: kubepolaris
 description: Enterprise-Grade Kubernetes Multi-Cluster Management Platform
 type: application
-version: 1.0.1
-appVersion: "1.0.0"
+version: 1.0.2
+appVersion: "1.0.2"
 
 keywords:
   - kubernetes
