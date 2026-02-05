@@ -1,6 +1,9 @@
 # chart-releaser 配置文件
 # https://github.com/helm/chart-releaser
 
+# 使用独立分支存放 Helm 仓库索引（避免与项目文档冲突）
+pages-branch: helm-charts
+
 # 发布时跳过已存在的版本
 skip-existing: true
 
