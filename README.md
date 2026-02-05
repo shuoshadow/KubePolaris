@@ -160,7 +160,17 @@ cd KubePolaris/deploy/scripts/
 ### Option 2: Kubernetes Deployment
 
 ```bash
-todo
+# Add Helm repository
+helm repo add kubepolaris https://clay-wangzhi.github.io/KubePolaris
+helm repo update
+
+# Install
+helm install kubepolaris kubepolaris/kubepolaris \
+  --namespace kubepolaris \
+  --create-namespace
+
+# Check status
+helm status kubepolaris -n kubepolaris
 ```
 
 ### Option 3: Run from Source

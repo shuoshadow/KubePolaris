@@ -32,14 +32,14 @@ KubePolaris 是一个现代化的 Kubernetes 集群管理平台，提供直观�
 ### 添加 Helm 仓库
 
 ```bash
-helm repo add kubepolaris https://kubepolaris.github.io/charts
+helm repo add kubepolaris https://clay-wangzhi.github.io/KubePolaris
 helm repo update
 ```
 
 ### 安装 Chart
 
 ```bash
-# 基础安装（JWT Secret 会自动生成）
+# 基础安装
 helm install kubepolaris kubepolaris/kubepolaris \
   --namespace kubepolaris \
   --create-namespace

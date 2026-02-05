@@ -108,7 +108,7 @@ docker-compose down -v
 ### 1. 添加 Helm 仓库
 
 ```bash
-helm repo add kubepolaris https://kubepolaris.github.io/charts
+helm repo add kubepolaris https://clay-wangzhi.github.io/KubePolaris
 helm repo update
 ```
 

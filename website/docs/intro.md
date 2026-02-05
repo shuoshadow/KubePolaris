@@ -96,7 +96,7 @@ docker-compose up -d
 
 ```bash
 # 添加 Helm 仓库
-helm repo add kubepolaris https://kubepolaris.github.io/charts
+helm repo add kubepolaris https://clay-wangzhi.github.io/KubePolaris
 
 # 安装
 helm install kubepolaris kubepolaris/kubepolaris \

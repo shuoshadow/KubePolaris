@@ -160,7 +160,17 @@ cd KubePolaris/deploy/scripts/
 ### 方式二：Kubernetes 部署
 
 ```bash
-todo
+# 添加 Helm 仓库
+helm repo add kubepolaris https://clay-wangzhi.github.io/KubePolaris
+helm repo update
+
+# 安装
+helm install kubepolaris kubepolaris/kubepolaris \
+  --namespace kubepolaris \
+  --create-namespace
+
+# 查看状态
+helm status kubepolaris -n kubepolaris
 ```
 
 ### 方式三：源码运行
